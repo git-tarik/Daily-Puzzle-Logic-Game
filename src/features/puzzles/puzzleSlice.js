@@ -13,6 +13,12 @@ export const fetchDailyPuzzle = createAsyncThunk(
             // 1. Try to load from DB
             let puzzle = await getPuzzle(dateISO);
 
+            // Check for stale data (Sequence puzzle missing new fields)
+            if (puzzle && puzzle.type === 'sequence' && (!puzzle.payload.missingIndices || !puzzle.payload.solution)) {
+                console.warn("Found stale sequence puzzle, regenerating...");
+                puzzle = null; // Force regeneration
+            }
+
             if (!puzzle) {
                 // 2. Generate new if not found
                 // Deterministically decide type based on date? Or just random for now?
@@ -53,7 +59,9 @@ export const submitPuzzleAttempt = createAsyncThunk(
         if (!currentPuzzle) throw new Error("No active puzzle");
 
         // Validate
+        console.log("DEBUG: submitPuzzleAttempt calling validatePuzzle with:", { type: currentPuzzle.type, attempt });
         const result = validatePuzzle(currentPuzzle.type, currentPuzzle, attempt);
+        console.log("DEBUG: validatePuzzle returned:", result);
 
         // Update Puzzle State
         const updatedPuzzle = {
@@ -179,12 +187,21 @@ const puzzleSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+            .addCase(submitPuzzleAttempt.pending, (state) => {
+                state.error = null;
+                // Don't set loading=true here to avoid flickering logic, or do?
+                // Usually for submission we might want a spinner.
+            })
             .addCase(submitPuzzleAttempt.fulfilled, (state, action) => {
                 state.currentPuzzle = action.payload.updatedPuzzle;
                 state.validationResult = action.payload.result;
                 if (action.payload.result.ok) {
                     state.status = 'solved';
                 }
+            })
+            .addCase(submitPuzzleAttempt.rejected, (state, action) => {
+                state.error = action.error.message || "Submission failed";
+                state.validationResult = { ok: false, reasons: [state.error] }; // fallback
             })
             .addCase(saveProgress.fulfilled, (state, action) => {
                 if (action.payload) {

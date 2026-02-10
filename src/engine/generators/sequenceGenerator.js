@@ -73,7 +73,9 @@ export const generateSequencePuzzle = (dateISO) => {
         payload: {
             sequence: visibleSequence,
             ruleHint: "Determine the pattern", // Could be more specific based on difficulty
-            missingCount: numMissing
+            missingCount: numMissing,
+            missingIndices,
+            solution
         },
         solutionHash: hashSolution(seed, solution)
     };

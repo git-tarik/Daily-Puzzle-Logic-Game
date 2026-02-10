@@ -1,0 +1,33 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Node modules and build artifacts
+node_modules/
+dist/
+*.log
+server_lint.txt
+
+# Prisma
+# Ignore the generated Prisma Client (usually in node_modules, but good to be safe)
+/prisma/client-lib
+# If you have local SQLite databases
+*.db
+*.db-journal
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+
+# Editor and System files
+.vscode/
+.idea/
+.DS_Store
+
+# Custom Scripts and Temporary Tests
+# Based on your "clean-test" and "prisma-test" folders
+clean-test/
+prisma-test/

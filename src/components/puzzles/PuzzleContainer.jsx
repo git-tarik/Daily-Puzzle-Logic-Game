@@ -34,8 +34,8 @@ const PuzzleContainer = () => {
         return () => { dispatch(clearValidation()); };
     }, [dispatch]);
 
-    if (loading) return <div className="text-center py-20 text-xl font-bold animate-pulse">Loading Puzzle...</div>;
-    if (error) return <div className="text-center py-20 text-red-500">Error: {error}</div>;
+    if (loading && !currentPuzzle) return <div className="text-center py-20 text-xl font-bold animate-pulse">Loading Puzzle...</div>;
+    if (error && !currentPuzzle) return <div className="text-center py-20 text-red-500">Error: {error}</div>;
     if (!currentPuzzle) return null;
 
     const renderPuzzle = () => {
@@ -64,6 +64,13 @@ const PuzzleContainer = () => {
         <div className="flex flex-col items-center w-full">
             {/* Main Game Card */}
             <div className="w-full max-w-2xl p-4 md:p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden">
+
+                {/* Global Error Alert */}
+                {error && (
+                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+                        <span className="block sm:inline">{error}</span>
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">

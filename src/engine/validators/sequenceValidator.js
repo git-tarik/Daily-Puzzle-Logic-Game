@@ -7,29 +7,29 @@ import { hashSolution } from '../seed.js';
  * @returns {object} - { ok: boolean, reasons?: string[] }
  */
 export const validateSequence = (puzzle, attempt) => {
+    if (!puzzle.payload || !puzzle.payload.missingIndices || !puzzle.payload.solution) {
+        console.error("Validator Error: Stale or invalid puzzle data", puzzle);
+        return { ok: false, reasons: ['System error: Invalid puzzle data. Please refresh.'] };
+    }
+
+    const { missingIndices, solution } = puzzle.payload;
+
     if (!Array.isArray(attempt)) {
-        return { ok: false, reasons: ['Invalid input format'] };
+        return { ok: false, reasons: ['Invalid attempt format'] };
     }
 
-    // Verify the solution hash matches
-    // In a real scenario, we might want to check the attempt against the hash directly
-    // But since we want to give specific feedback, we might need to know the solution logic or reconstruct it.
-    // HOWEVER, the requirement says "solutionHash = SHA256(seed + JSON.stringify(solution))".
-    // This implies we don't send the solution to the client in plain text if we want to be strictly secure,
-    // but this is a client-side game. 
-    // Let's assume the puzzle object MIGHT contain the solution for easier validation if we trust the client,
-    // OR we can't trust it and must rely on the hash.
-
-    // Requirement: "Validators: pure functions, no side effects, reject partial/incorrect".
-    // AND "Payload includes visible sequence + missing indices".
-    // The solution is the missing numbers.
-
-    // Let's check if the hash of the attempt matches the puzzle.solutionHash
-    const attemptHash = hashSolution(puzzle.seed, attempt);
-
-    if (attemptHash === puzzle.solutionHash) {
-        return { ok: true };
+    if (attempt.length !== missingIndices.length) {
+        return { ok: false, reasons: ['Incorrect number of values'] };
     }
 
-    return { ok: false, reasons: ['Incorrect sequence'] };
+    for (let i = 0; i < missingIndices.length; i++) {
+        const userValue = Number(attempt[i]);
+        const correctValue = solution[i];
+
+        if (Number.isNaN(userValue) || userValue !== correctValue) {
+            return { ok: false, reasons: ['Incorrect sequence'] };
+        }
+    }
+
+    return { ok: true };
 };

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
 const SequencePuzzle = ({ puzzle, onSubmit }) => {
+    // Safety check for stale data
+    if (!puzzle.payload || !puzzle.payload.missingIndices) {
+        return <div className="text-red-500">Error: Invalid puzzle data. Please refresh.</div>;
+    }
+
     const { sequence, missingCount } = puzzle.payload;
     const [inputs, setInputs] = useState({});
 
@@ -36,10 +41,19 @@ const SequencePuzzle = ({ puzzle, onSubmit }) => {
     };
 
     const handleVerify = () => {
-        // Reconstruct the full sequence attempt
-        const attempt = sequence.map((val, idx) => {
-            if (val !== null) return val;
-            return inputs[idx] ? parseInt(inputs[idx], 10) : null;
+        const { missingIndices } = puzzle.payload;
+
+        // Construct array of ONLY the user's answers, in order of missingIndices
+        const attempt = missingIndices.map(index => {
+            const val = inputs[index];
+            return val ? parseInt(val, 10) : null;
+        });
+
+        // Debug logging as requested (temporary)
+        console.log('Validating attempt:', {
+            missingIndices,
+            inputs,
+            attempt
         });
 
         onSubmit(attempt);
