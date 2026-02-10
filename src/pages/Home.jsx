@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Home = () => {
+const Home = ({ onStart }) => {
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
             <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight">
@@ -15,7 +15,7 @@ const Home = () => {
 
             <button
                 className="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1"
-                onClick={() => alert('Puzzle Logic coming in Phase 2!')}
+                onClick={onStart}
             >
                 Start Today’s Puzzle
                 <span className="absolute inset-0 rounded-full border-2 border-white/20 group-hover:border-white/40 transition-colors"></span>
