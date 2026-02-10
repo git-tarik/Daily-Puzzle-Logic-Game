@@ -1,4 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { calculateScore } from '../../engine/scoring.js';
+import { checkAchievements } from '../../engine/achievements.js';
 import { generatePuzzle, validatePuzzle } from '../../engine/generatePuzzle';
 import { getPuzzle, savePuzzle, getUser, saveUser } from '../../lib/db';
 import dayjs from 'dayjs';
@@ -63,12 +65,8 @@ export const submitPuzzleAttempt = createAsyncThunk(
 
         await savePuzzle(updatedPuzzle);
 
-        // If solved and not previously solved, update User Stats
+        // If solved and not previously solved, update User Stats & Score
         if (result.ok && !currentPuzzle.solved) {
-            // We need to update user stats. Ideally dispatch a user action or do it here.
-            // Let's do it here for simplicity of flow, updating the DB directly then re-fetching user? 
-            // Or better, let the UI trigger a user refresh, or just update local user state if we had the user slice actions exposed.
-            // For now, let's just persist to DB.
             const user = await getUser();
             if (user) {
                 const today = dayjs().format('YYYY-MM-DD');
@@ -79,17 +77,53 @@ export const submitPuzzleAttempt = createAsyncThunk(
                 if (lastPlayed) {
                     const diff = dayjs(today).diff(dayjs(lastPlayed), 'day');
                     if (diff === 1) newStreak++;
-                    else if (diff > 1) newStreak = 1; // Reset if missed a day
+                    else if (diff > 1) newStreak = 1;
                 } else {
                     newStreak = 1;
                 }
 
+                // Calculate Score
+                // Time taken is roughly now - puzzle load time? Or just track it in UI and pass it?
+                // Phase 3 requirement says "timeBonus = max(0, 100 - minutesTaken * 2)"
+                // attempt.timestamp is set here. But we need start time.
+                // Let's assume passed in payload or calculate diff if we stored start time.
+                // For now, let's use a passed-in `timeTaken` from the UI or just 0 if missing.
+                // We'll update the component to pass it.
+
+                const timeTaken = attempt.timeTaken || 0;
+
+                const { finalScore, breakdown } = calculateScore({
+                    difficulty: 1, // Phase 3: "difficulty * 100", assume 1 for now or derive from type matrix=2?
+                    timeTakenSeconds: timeTaken,
+                    hintsUsed: currentPuzzle.hintsUsed,
+                    streak: newStreak
+                });
+
+                // Check Achievements
+                const puzzleOutcome = {
+                    solved: true,
+                    hintsUsed: currentPuzzle.hintsUsed,
+                    timeTaken
+                };
+                const newAchievements = checkAchievements({ ...user, streakCount: newStreak }, puzzleOutcome);
+
+                // Update User
                 await saveUser({
                     ...user,
                     streakCount: newStreak,
                     lastPlayedISO: new Date().toISOString(),
-                    heatmap: [...(user.heatmap || []), new Date().toISOString()]
+                    heatmap: [...(user.heatmap || []), today],
+                    totalScore: (user.totalScore || 0) + finalScore,
+                    unlockedAchievements: [...(user.unlockedAchievements || []), ...newAchievements]
                 });
+
+                // Update Puzzle with Score
+                updatedPuzzle.score = finalScore;
+                updatedPuzzle.timeTaken = timeTaken;
+                await savePuzzle(updatedPuzzle);
+
+                // Return extra info for UI
+                return { result, updatedPuzzle, newAchievements, scoreBreakdown: breakdown, finalScore };
             }
         }
 

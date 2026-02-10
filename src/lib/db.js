@@ -4,8 +4,14 @@ export const db = new Dexie('logic-looper-db');
 
 db.version(1).stores({
     puzzles: 'dateISO, puzzleSeed, puzzleType, progress, solved, attempts, hintsUsed, gameState',
-    user: 'idLocal, guestName, streakCount, lastPlayedISO, heatmap', // heatmap is not indexed but stored
+    user: 'idLocal, guestName, streakCount, lastPlayedISO, heatmap',
     settings: 'key, value',
+});
+
+// Version 2: Add scoring and achievements
+db.version(2).stores({
+    puzzles: 'dateISO, puzzleSeed, puzzleType, progress, solved, attempts, hintsUsed, gameState, score, timeTaken',
+    user: 'idLocal, guestName, streakCount, lastPlayedISO, heatmap, totalScore, unlockedAchievements'
 });
 
 // Helper functions
