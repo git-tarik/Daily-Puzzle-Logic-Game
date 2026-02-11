@@ -19,6 +19,7 @@ const Header = () => {
     const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [truecallerLoaded, setTruecallerLoaded] = useState(false);
 
     const handleCredentialsLogin = async (e) => {
         e.preventDefault();
@@ -116,7 +117,7 @@ const Header = () => {
             return;
         }
 
-        if (window.Truecaller) {
+        if (truecallerLoaded && window.Truecaller) {
             const requestNonce = generateNonce();
             try {
                 window.Truecaller.requestVerification(requestNonce);
@@ -125,7 +126,12 @@ const Header = () => {
                 alert("Failed to start Truecaller verification.");
             }
         } else {
-            alert("Truecaller SDK initializing... Please wait a moment and try again.");
+            console.log("Truecaller not ready. Loaded:", truecallerLoaded, "Window:", !!window.Truecaller);
+            if (!document.getElementById('truecaller-sdk')) {
+                alert("Truecaller SDK failed to load. Please check your internet connection.");
+            } else {
+                alert("Truecaller SDK initializing... Please wait a moment.");
+            }
         }
     };
 
@@ -239,28 +245,36 @@ const Header = () => {
             }
 
             // -- Truecaller Init (Web SDK) --
-            // Load only if not already loaded or if app key is present
-            if (TRUECALLER_APP_KEY && !document.getElementById('truecaller-sdk')) {
-                const tcScript = document.createElement('script');
-                tcScript.id = 'truecaller-sdk';
-                tcScript.src = "https://sdk.truecaller.com/js/v2/app.js";
-                tcScript.async = true;
-                tcScript.defer = true;
-                tcScript.onload = () => {
-                    if (window.Truecaller) {
-                        console.log("Initializing Truecaller SDK...");
-                        window.Truecaller.initialize({
-                            appKey: TRUECALLER_APP_KEY,
-                        });
-                    }
-                };
-                document.head.appendChild(tcScript);
-            } else if (window.Truecaller) {
-                // If already loaded (e.g. from previous open), re-init might be needed if key changed, but unlikely.
-                // Re-init is generally safe or ignored.
-                window.Truecaller.initialize({
-                    appKey: TRUECALLER_APP_KEY,
-                });
+            if (TRUECALLER_APP_KEY) {
+                if (window.Truecaller) {
+                    setTruecallerLoaded(true);
+                }
+
+                if (!document.getElementById('truecaller-sdk')) {
+                    const tcScript = document.createElement('script');
+                    tcScript.id = 'truecaller-sdk';
+                    tcScript.src = "https://sdk.truecaller.com/js/v2/app.js";
+                    tcScript.async = true;
+                    tcScript.defer = true;
+                    tcScript.onload = () => {
+                        if (window.Truecaller) {
+                            console.log("Initializing Truecaller SDK...");
+                            try {
+                                window.Truecaller.initialize({
+                                    appKey: TRUECALLER_APP_KEY,
+                                });
+                                setTruecallerLoaded(true);
+                                console.log("Truecaller SDK Initialized");
+                            } catch (e) {
+                                console.error("Truecaller Init Error:", e);
+                            }
+                        }
+                    };
+                    tcScript.onerror = () => {
+                        console.error("Failed to load Truecaller SDK script");
+                    };
+                    document.head.appendChild(tcScript);
+                }
             }
         }
     }, [showModal, AUTH_MODE, TRUECALLER_APP_KEY]);
@@ -296,10 +310,11 @@ const Header = () => {
 
                             {/* Truecaller button */}
                             <button
-                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors font-medium"
+                                className={`w-full py-2 px-4 rounded transition-colors font-medium text-white ${truecallerLoaded ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-300 cursor-not-allowed'}`}
                                 onClick={() => handleLogin('truecaller')}
+                                disabled={!truecallerLoaded}
                             >
-                                Sign in with Truecaller
+                                {truecallerLoaded ? 'Sign in with Truecaller' : 'Loading Truecaller...'}
                             </button>
                         </>
                     )}
