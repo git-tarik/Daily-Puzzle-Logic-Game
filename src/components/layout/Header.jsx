@@ -12,6 +12,7 @@ const Header = () => {
     // Read AUTH_MODE from env
     const AUTH_MODE = import.meta.env.VITE_AUTH_MODE;
     const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const TRUECALLER_APP_KEY = import.meta.env.VITE_TRUECALLER_APP_KEY;
 
     // Credentials State
     const [authTab, setAuthTab] = useState('login'); // 'login' | 'register'
@@ -104,6 +105,68 @@ const Header = () => {
         }
     };
 
+    // -- TRUECALLER AUTH HANDLERS --
+    const generateNonce = () => {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    };
+
+    const isMobileDevice = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+
+    const handleTruecallerLogin = () => {
+        if (!TRUECALLER_APP_KEY) {
+            alert("Truecaller App Key missing in configuration.");
+            return;
+        }
+
+        const requestNonce = generateNonce();
+        const partnerName = "Logic Looper";
+        const lang = "en";
+
+        // Construct the Deep Link
+        const deepLink = `truecallersdk://truesdk/web_verify?type=btmsheet&requestNonce=${requestNonce}&partnerKey=${TRUECALLER_APP_KEY}&partnerName=${encodeURIComponent(partnerName)}&lang=${lang}`;
+
+        if (isMobileDevice()) {
+            // Redirect to deep link
+            window.location.href = deepLink;
+
+            // Start Polling for completion
+            // We poll for 2 minutes max
+            const startTime = Date.now();
+            const pollInterval = setInterval(async () => {
+                const elapsed = Date.now() - startTime;
+                if (elapsed > 2 * 60 * 1000) {
+                    clearInterval(pollInterval);
+                    console.error("Truecaller polling timed out");
+                    return;
+                }
+
+                try {
+                    const res = await fetch(getApiUrl(`/api/auth/truecaller/status?nonce=${requestNonce}`));
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.status === 'authenticated' && data.user) {
+                            clearInterval(pollInterval);
+                            dispatch(login(data.user));
+                            localStorage.setItem("logiclooper_user", JSON.stringify(data.user));
+                            closeAuthModal();
+                            alert("Successfully logged in with Truecaller!");
+                        }
+                    }
+                } catch (e) {
+                    console.error("Polling error", e);
+                }
+            }, 2000); // Check every 2 seconds
+
+        } else {
+            // Desktop Wrapper Flow?
+            // Currently we just alert, but in future could show QR code that links to the deep link if user scans it.
+            // For now, keep simple alert.
+            alert("Truecaller One-Tap Sign In is only available on mobile devices with the Truecaller app installed.");
+        }
+    };
+
     // -- STUB AUTH --
     const stubLogin = (provider = "google") => {
         const user = {
@@ -133,15 +196,18 @@ const Header = () => {
                 return;
             }
         } else if (provider === 'truecaller') {
-            alert('Truecaller Real Auth requires SDK setup.');
+            handleTruecallerLogin();
         }
     };
 
-    // Effect to render Google Button when modal opens if in real mode
+    // Effect to render Google Button only (Truecaller is now Deep Link)
     useEffect(() => {
         if (showModal && AUTH_MODE !== 'stub') {
+            // -- Google Init --
             const initGoogle = () => {
                 if (window.google && GOOGLE_CLIENT_ID) {
+                    // Check if allowed origin logic is handled by Google script, 
+                    // but we can catch basic errors in the callback if possible.
                     window.google.accounts.id.initialize({
                         client_id: GOOGLE_CLIENT_ID,
                         callback: handleGoogleResponse
@@ -170,6 +236,8 @@ const Header = () => {
             } else {
                 initGoogle();
             }
+
+            // Truecaller script removed as it does not exist for this flow.
         }
     }, [showModal, AUTH_MODE]);
 
@@ -202,7 +270,7 @@ const Header = () => {
                             {/* Google Button Container */}
                             <div id="googleBtn" className="w-full flex justify-center min-h-[40px]"></div>
 
-                            {/* Truecaller button placeholder */}
+                            {/* Truecaller button */}
                             <button
                                 className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors font-medium"
                                 onClick={() => handleLogin('truecaller')}
