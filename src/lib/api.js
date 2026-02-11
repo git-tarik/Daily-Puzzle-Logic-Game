@@ -4,7 +4,7 @@
 // If VITE_API_URL is set (e.g. in Vercel), use it. 
 // Otherwise, fall back to empty string (relative path) which works if served from same origin 
 // OR if using Vite proxy in dev.
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export const getApiUrl = (endpoint) => {
     // Ensure endpoint starts with /
