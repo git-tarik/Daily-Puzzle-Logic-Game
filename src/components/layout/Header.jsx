@@ -246,34 +246,47 @@ const Header = () => {
 
             // -- Truecaller Init (Web SDK) --
             if (TRUECALLER_APP_KEY) {
-                if (window.Truecaller) {
-                    setTruecallerLoaded(true);
-                }
+                const initSDK = () => {
+                    if (window.Truecaller) {
+                        try {
+                            console.log("Initializing Truecaller SDK...");
+                            window.Truecaller.initialize({
+                                appKey: TRUECALLER_APP_KEY,
+                            });
+                            setTruecallerLoaded(true);
+                            console.log("Truecaller SDK Initialized");
+                        } catch (e) {
+                            console.error("Truecaller Init Error:", e);
+                            setTruecallerLoaded(true);
+                        }
+                    }
+                };
 
-                if (!document.getElementById('truecaller-sdk')) {
+                if (window.Truecaller) {
+                    initSDK();
+                } else if (!document.getElementById('truecaller-sdk')) {
                     const tcScript = document.createElement('script');
                     tcScript.id = 'truecaller-sdk';
                     tcScript.src = "https://sdk.truecaller.com/js/v2/app.js";
                     tcScript.async = true;
                     tcScript.defer = true;
-                    tcScript.onload = () => {
-                        if (window.Truecaller) {
-                            console.log("Initializing Truecaller SDK...");
-                            try {
-                                window.Truecaller.initialize({
-                                    appKey: TRUECALLER_APP_KEY,
-                                });
-                                setTruecallerLoaded(true);
-                                console.log("Truecaller SDK Initialized");
-                            } catch (e) {
-                                console.error("Truecaller Init Error:", e);
-                            }
-                        }
-                    };
-                    tcScript.onerror = () => {
-                        console.error("Failed to load Truecaller SDK script");
-                    };
+                    tcScript.onload = initSDK;
+                    tcScript.onerror = () => console.error("Truecaller Script Load Failed");
                     document.head.appendChild(tcScript);
+                } else {
+                    // Script exists but window.Truecaller missing? Poll for it.
+                    console.log("Truecaller script present, waiting for object...");
+                    let attempts = 0;
+                    const interval = setInterval(() => {
+                        attempts++;
+                        if (window.Truecaller) {
+                            clearInterval(interval);
+                            initSDK();
+                        } else if (attempts > 20) { // 10 seconds
+                            clearInterval(interval);
+                            console.error("Truecaller SDK Load Timeout");
+                        }
+                    }, 500);
                 }
             }
         }
