@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -15,6 +16,11 @@ const PORT = process.env.PORT || 3001;
 
 // Middlewares
 app.use(helmet());
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    next();
+});
 app.use(cors()); // Restrict origin in prod
 app.use(express.json());
 
@@ -35,6 +41,10 @@ app.get('/health', (req, res) => {
 // API Routes Stubs
 import { verifyScoreSubmission } from './verification.js';
 import { calculateScore } from '../src/engine/scoring.js';
+
+import authRouter from './auth.js';
+
+app.use('/api/auth', authRouter);
 
 app.post('/api/score', async (req, res) => {
     try {

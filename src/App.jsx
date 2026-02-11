@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import PuzzleContainer from './components/puzzles/PuzzleContainer';
 import { getUser, saveUser } from './lib/db';
 import { useDispatch } from 'react-redux';
+import { login } from './features/auth/authSlice';
 
 function App() {
   const dispatch = useDispatch();
@@ -12,6 +13,19 @@ function App() {
 
   useEffect(() => {
     const initUser = async () => {
+      // Check for stub user persistence
+      if (import.meta.env.VITE_AUTH_MODE === 'stub') {
+        const stubUserStr = localStorage.getItem("logiclooper_user");
+        if (stubUserStr) {
+          try {
+            const stubUser = JSON.parse(stubUserStr);
+            dispatch(login(stubUser));
+          } catch (e) {
+            console.error("Failed to parse stub user", e);
+          }
+        }
+      }
+
       // Environment check (Verification only)
       console.log('Env Check:', {
         google: import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Set' : 'Not Set',
