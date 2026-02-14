@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import PuzzleContainer from './components/puzzles/PuzzleContainer';
 import { getUser, saveUser } from './lib/db';
 import { useDispatch } from 'react-redux';
@@ -10,6 +12,7 @@ import { login } from './features/auth/authSlice';
 function App() {
   const dispatch = useDispatch();
   const [view, setView] = useState('home'); // 'home' | 'puzzle'
+  const [path, setPath] = useState(window.location.pathname.toLowerCase());
 
   useEffect(() => {
     const initUser = async () => {
@@ -28,7 +31,8 @@ function App() {
 
       // Environment check (Verification only)
       console.log('Env Check:', {
-        google: import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Set' : 'Not Set'
+        google: import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Set' : 'Not Set',
+        truecaller: import.meta.env.VITE_TRUECALLER_APP_KEY ? 'Set' : 'Not Set'
       });
 
       let user = await getUser();
@@ -48,10 +52,20 @@ function App() {
     initUser();
   }, [dispatch]);
 
+  useEffect(() => {
+    const onPopState = () => setPath(window.location.pathname.toLowerCase());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-200 font-inter">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
+        {path === '/privacy' && <PrivacyPolicy />}
+        {path === '/terms' && <TermsOfService />}
+        {path !== '/privacy' && path !== '/terms' && (
+          <>
         {view === 'home' && <Home onStart={() => setView('puzzle')} />}
         {view === 'puzzle' && (
           <div>
@@ -63,6 +77,8 @@ function App() {
             </button>
             <PuzzleContainer />
           </div>
+        )}
+          </>
         )}
       </main>
       <Footer />
