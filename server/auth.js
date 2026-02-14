@@ -30,8 +30,10 @@ const extractPhoneNumber = (profile) => {
     if (!profile) return null;
 
     const normalizePhone = (value) => {
-        if (typeof value !== 'string') return null;
-        const cleaned = value.replace(/[^\d+]/g, '');
+        if (value === null || value === undefined) return null;
+        const asText = String(value);
+        if (!asText.trim()) return null;
+        const cleaned = asText.replace(/[^\d+]/g, '');
         return cleaned || null;
     };
 
@@ -68,6 +70,10 @@ const extractPhoneNumber = (profile) => {
                 const normalized = normalizePhone(item);
                 if (normalized) return normalized;
             }
+            if (typeof item === 'number' || typeof item === 'bigint') {
+                const normalized = normalizePhone(item);
+                if (normalized) return normalized;
+            }
             const parsed = fromObject(item);
             if (parsed) return parsed;
         }
@@ -80,6 +86,10 @@ const extractPhoneNumber = (profile) => {
     if (Array.isArray(profile.phones) && profile.phones.length > 0) {
         for (const item of profile.phones) {
             if (typeof item === 'string') {
+                const normalized = normalizePhone(item);
+                if (normalized) return normalized;
+            }
+            if (typeof item === 'number' || typeof item === 'bigint') {
                 const normalized = normalizePhone(item);
                 if (normalized) return normalized;
             }
