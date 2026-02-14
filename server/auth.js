@@ -81,6 +81,31 @@ const extractName = (profile) => {
     return 'Truecaller User';
 };
 
+const extractAccessToken = (body) => {
+    if (!body || typeof body !== 'object') return null;
+
+    if (typeof body.accessToken === 'string' && body.accessToken.trim()) {
+        return body.accessToken.trim();
+    }
+
+    if (typeof body.access_token === 'string' && body.access_token.trim()) {
+        return body.access_token.trim();
+    }
+
+    if (typeof body.token === 'string' && body.token.trim()) {
+        return body.token.trim();
+    }
+
+    if (body.accessToken && typeof body.accessToken === 'object') {
+        const nested = body.accessToken;
+        if (typeof nested.token === 'string' && nested.token.trim()) return nested.token.trim();
+        if (typeof nested.accessToken === 'string' && nested.accessToken.trim()) return nested.accessToken.trim();
+        if (typeof nested.value === 'string' && nested.value.trim()) return nested.value.trim();
+    }
+
+    return null;
+};
+
 const upsertTruecallerUser = async (profile) => {
     const phoneNumber = extractPhoneNumber(profile);
     if (!phoneNumber) {
@@ -166,7 +191,7 @@ router.post('/google', async (req, res) => {
 // -- TRUECALLER AUTH --
 router.post('/truecaller/callback', async (req, res) => {
     const requestId = req.body.requestId || req.body.requestNonce;
-    const accessToken = req.body.accessToken;
+    const accessToken = extractAccessToken(req.body);
     const status = String(req.body.status || '').toLowerCase();
     const callbackProfileEndpoint = req.body.endpoint;
 
@@ -177,9 +202,15 @@ router.post('/truecaller/callback', async (req, res) => {
     if (!accessToken) {
         const rejected = status.includes('reject') || status.includes('deny') || status.includes('cancel');
         pendingTruecallerRequests.set(requestId, {
-            status: rejected ? 'rejected' : 'error',
-            message: rejected ? 'User cancelled Truecaller sign in.' : 'Missing access token from callback.',
+            status: rejected ? 'rejected' : 'pending',
+            message: rejected ? 'User cancelled Truecaller sign in.' : 'Waiting for token from Truecaller callback.',
             timestamp: Date.now(),
+        });
+        console.warn('Truecaller callback without usable access token', {
+            requestId,
+            status,
+            hasAccessTokenKey: Object.prototype.hasOwnProperty.call(req.body || {}, 'accessToken'),
+            hasAccessTokenSnake: Object.prototype.hasOwnProperty.call(req.body || {}, 'access_token')
         });
         return res.json({ ok: true });
     }
@@ -205,6 +236,7 @@ router.post('/truecaller/callback', async (req, res) => {
         }
 
         const profile = await profileResponse.json();
+        console.log('Truecaller profile keys:', Object.keys(profile || {}));
         const user = await upsertTruecallerUser(profile);
 
         pendingTruecallerRequests.set(requestId, {
@@ -259,7 +291,7 @@ router.get('/truecaller/status', (req, res) => {
 
 router.post('/truecaller', async (req, res) => {
     try {
-        const { accessToken } = req.body;
+        const accessToken = extractAccessToken(req.body);
         const callbackProfileEndpoint = req.body.endpoint;
         if (!accessToken) {
             return res.status(400).json({ error: 'Missing access token' });

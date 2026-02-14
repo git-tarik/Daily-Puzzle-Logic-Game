@@ -14,6 +14,9 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
+// Render is behind a reverse proxy, so trust X-Forwarded-* headers.
+app.set('trust proxy', 1);
+
 // Middlewares
 app.use(helmet());
 app.use((req, res, next) => {
@@ -23,6 +26,7 @@ app.use((req, res, next) => {
 });
 app.use(cors()); // Restrict origin in prod
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rate Limiting
 const limiter = rateLimit({
