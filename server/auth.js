@@ -29,36 +29,82 @@ setInterval(() => {
 const extractPhoneNumber = (profile) => {
     if (!profile) return null;
 
+    const normalizePhone = (value) => {
+        if (typeof value !== 'string') return null;
+        const cleaned = value.replace(/[^\d+]/g, '');
+        return cleaned || null;
+    };
+
+    const fromObject = (obj) => {
+        if (!obj || typeof obj !== 'object') return null;
+        const direct =
+            obj.e164Format ||
+            obj.internationalNumber ||
+            obj.nationalFormat ||
+            obj.number ||
+            obj.value ||
+            obj.id ||
+            obj.phoneNumber ||
+            obj.phone;
+
+        const normalizedDirect = normalizePhone(direct);
+        if (normalizedDirect) return normalizedDirect;
+
+        // Some payloads provide country code + national number separately.
+        const cc = String(obj.countryCode || obj.country_calling_code || '').replace(/[^\d]/g, '');
+        const nn = String(obj.nationalNumber || obj.national_number || obj.localNumber || '').replace(/[^\d]/g, '');
+        if (cc && nn) return `+${cc}${nn}`;
+
+        return null;
+    };
+
     if (profile.phoneNumber) {
-        return profile.phoneNumber;
+        return normalizePhone(profile.phoneNumber);
     }
 
     if (Array.isArray(profile.phoneNumbers) && profile.phoneNumbers.length > 0) {
-        const first = profile.phoneNumbers[0];
-        if (typeof first === 'string') return first;
-        if (first && typeof first === 'object') {
-            return first.e164Format || first.nationalFormat || first.number || null;
+        for (const item of profile.phoneNumbers) {
+            if (typeof item === 'string') {
+                const normalized = normalizePhone(item);
+                if (normalized) return normalized;
+            }
+            const parsed = fromObject(item);
+            if (parsed) return parsed;
         }
     }
 
     if (profile.defaultNumber) {
-        return profile.defaultNumber;
+        return normalizePhone(profile.defaultNumber);
     }
 
     if (Array.isArray(profile.phones) && profile.phones.length > 0) {
-        const first = profile.phones[0];
-        if (typeof first === 'string') return first;
-        if (first && typeof first === 'object') {
-            return first.e164Format || first.internationalNumber || first.number || null;
+        for (const item of profile.phones) {
+            if (typeof item === 'string') {
+                const normalized = normalizePhone(item);
+                if (normalized) return normalized;
+            }
+            const parsed = fromObject(item);
+            if (parsed) return parsed;
         }
     }
 
     if (profile.mobile) {
-        return profile.mobile;
+        return normalizePhone(profile.mobile);
     }
 
     if (profile.primaryPhoneNumber) {
-        return profile.primaryPhoneNumber;
+        return normalizePhone(profile.primaryPhoneNumber);
+    }
+
+    // Some payloads include phone identity inside onlineIdentities.
+    if (Array.isArray(profile.onlineIdentities)) {
+        for (const identity of profile.onlineIdentities) {
+            if (!identity || typeof identity !== 'object') continue;
+            const type = String(identity.type || identity.identityType || '').toLowerCase();
+            if (!type.includes('phone') && !type.includes('mobile')) continue;
+            const parsed = fromObject(identity);
+            if (parsed) return parsed;
+        }
     }
 
     return null;
@@ -109,6 +155,20 @@ const extractAccessToken = (body) => {
 const upsertTruecallerUser = async (profile) => {
     const phoneNumber = extractPhoneNumber(profile);
     if (!phoneNumber) {
+        if (profile && typeof profile === 'object') {
+            const phoneArrayShape = Array.isArray(profile.phoneNumbers)
+                ? profile.phoneNumbers.map((entry) => (entry && typeof entry === 'object' ? Object.keys(entry) : typeof entry))
+                : null;
+            const onlineIdentitiesShape = Array.isArray(profile.onlineIdentities)
+                ? profile.onlineIdentities.map((entry) => (entry && typeof entry === 'object' ? Object.keys(entry) : typeof entry))
+                : null;
+            console.warn('Truecaller phone parsing failed', {
+                hasPhoneNumbers: Array.isArray(profile.phoneNumbers),
+                phoneNumbersShape: phoneArrayShape,
+                hasOnlineIdentities: Array.isArray(profile.onlineIdentities),
+                onlineIdentitiesShape
+            });
+        }
         throw new Error('No phone number returned by Truecaller');
     }
 
