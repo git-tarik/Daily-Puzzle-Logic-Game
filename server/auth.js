@@ -41,6 +41,26 @@ const extractPhoneNumber = (profile) => {
         }
     }
 
+    if (profile.defaultNumber) {
+        return profile.defaultNumber;
+    }
+
+    if (Array.isArray(profile.phones) && profile.phones.length > 0) {
+        const first = profile.phones[0];
+        if (typeof first === 'string') return first;
+        if (first && typeof first === 'object') {
+            return first.e164Format || first.internationalNumber || first.number || null;
+        }
+    }
+
+    if (profile.mobile) {
+        return profile.mobile;
+    }
+
+    if (profile.primaryPhoneNumber) {
+        return profile.primaryPhoneNumber;
+    }
+
     return null;
 };
 
@@ -148,6 +168,7 @@ router.post('/truecaller/callback', async (req, res) => {
     const requestId = req.body.requestId || req.body.requestNonce;
     const accessToken = req.body.accessToken;
     const status = String(req.body.status || '').toLowerCase();
+    const callbackProfileEndpoint = req.body.endpoint;
 
     if (!requestId) {
         return res.status(400).json({ error: 'Missing requestId' });
@@ -164,7 +185,13 @@ router.post('/truecaller/callback', async (req, res) => {
     }
 
     try {
-        const profileResponse = await fetch(TRUECALLER_PROFILE_URL, {
+        // Truecaller callback sends region-specific profile endpoint; prefer it over static default.
+        const profileEndpoint =
+            (typeof callbackProfileEndpoint === 'string' && callbackProfileEndpoint.startsWith('https://'))
+                ? callbackProfileEndpoint
+                : TRUECALLER_PROFILE_URL;
+
+        const profileResponse = await fetch(profileEndpoint, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
 
@@ -189,6 +216,9 @@ router.post('/truecaller/callback', async (req, res) => {
         return res.json({ ok: true });
     } catch (e) {
         console.error('Truecaller Callback Error:', e);
+        if (req.body && typeof req.body === 'object') {
+            console.error('Truecaller Callback payload keys:', Object.keys(req.body));
+        }
         pendingTruecallerRequests.set(requestId, {
             status: 'error',
             message: e.message || 'Truecaller callback failed',
@@ -230,11 +260,17 @@ router.get('/truecaller/status', (req, res) => {
 router.post('/truecaller', async (req, res) => {
     try {
         const { accessToken } = req.body;
+        const callbackProfileEndpoint = req.body.endpoint;
         if (!accessToken) {
             return res.status(400).json({ error: 'Missing access token' });
         }
 
-        const profileResponse = await fetch(TRUECALLER_PROFILE_URL, {
+        const profileEndpoint =
+            (typeof callbackProfileEndpoint === 'string' && callbackProfileEndpoint.startsWith('https://'))
+                ? callbackProfileEndpoint
+                : TRUECALLER_PROFILE_URL;
+
+        const profileResponse = await fetch(profileEndpoint, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
 
