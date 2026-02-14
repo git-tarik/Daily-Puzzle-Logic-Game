@@ -12,57 +12,13 @@ const Header = () => {
     // Read AUTH_MODE from env
     const AUTH_MODE = import.meta.env.VITE_AUTH_MODE;
     const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const TRUECALLER_APP_KEY = import.meta.env.VITE_TRUECALLER_APP_KEY;
 
-    // Credentials State
-    const [authTab, setAuthTab] = useState('login'); // 'login' | 'register'
-    const [formData, setFormData] = useState({ username: '', password: '', confirmPassword: '' });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [truecallerLoaded, setTruecallerLoaded] = useState(false);
+    const openAuthModal = () => {
+        setShowModal(true);
+    };
 
-    const handleCredentialsLogin = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setLoading(true);
-
-        if (authTab === 'register') {
-            if (formData.password !== formData.confirmPassword) {
-                setError("Passwords do not match");
-                setLoading(false);
-                return;
-            }
-        }
-
-        const endpoint = authTab === 'login' ? getApiUrl('/api/auth/login') : getApiUrl('/api/auth/register');
-
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: formData.username,
-                    password: formData.password
-                })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Authentication failed');
-            }
-
-            dispatch(login(data));
-            localStorage.setItem("logiclooper_user", JSON.stringify(data));
-            closeAuthModal();
-            // Reset form
-            setFormData({ username: '', password: '', confirmPassword: '' });
-        } catch (err) {
-            console.error(err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+    const closeAuthModal = () => {
+        setShowModal(false);
     };
 
     const handleGuestLogin = () => {
@@ -72,14 +28,6 @@ const Header = () => {
     const handleLogout = () => {
         dispatch(logout());
         localStorage.removeItem('logiclooper_user');
-    };
-
-    const openAuthModal = () => {
-        setShowModal(true);
-    };
-
-    const closeAuthModal = () => {
-        setShowModal(false);
     };
 
     // -- REAL AUTH HANDLERS --
@@ -98,7 +46,7 @@ const Header = () => {
 
             const userData = await res.json();
             dispatch(login(userData));
-            localStorage.setItem("logiclooper_user", JSON.stringify(userData));
+            localStorage.setItem('logiclooper_user', JSON.stringify(userData));
             closeAuthModal();
         } catch (error) {
             console.error(error);
@@ -106,115 +54,38 @@ const Header = () => {
         }
     };
 
-    // -- TRUECALLER AUTH HANDLERS --
-    const generateNonce = () => {
-        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    };
-
-    const handleTruecallerLogin = () => {
-        if (!TRUECALLER_APP_KEY) {
-            alert("Truecaller App Key missing in configuration.");
-            return;
-        }
-
-        if (truecallerLoaded && window.Truecaller) {
-            const requestNonce = generateNonce();
-            try {
-                window.Truecaller.requestVerification(requestNonce);
-            } catch (e) {
-                console.error("Truecaller Request Error:", e);
-                alert("Failed to start Truecaller verification.");
-            }
-        } else {
-            console.log("Truecaller not ready. Loaded:", truecallerLoaded, "Window:", !!window.Truecaller);
-            if (!document.getElementById('truecaller-sdk')) {
-                alert("Truecaller SDK failed to load. Please check your internet connection.");
-            } else {
-                alert("Truecaller SDK initializing... Please wait a moment.");
-            }
-        }
-    };
-
     // -- STUB AUTH --
-    const stubLogin = (provider = "google") => {
-        const user = {
+    const stubLogin = () => {
+        const stubUser = {
             id: crypto.randomUUID(),
-            email: provider === "google" ? "demo@logiclooper.dev" : null,
-            name: provider === "google" ? "Demo User" : "Truecaller User",
-            provider,
+            email: 'demo@logiclooper.dev',
+            name: 'Demo User',
+            provider: 'google',
             createdAt: new Date().toISOString()
         };
 
-        localStorage.setItem("logiclooper_user", JSON.stringify(user));
-        return user;
-    }
+        localStorage.setItem('logiclooper_user', JSON.stringify(stubUser));
+        return stubUser;
+    };
 
-    const handleLogin = (provider) => {
-        if (AUTH_MODE === "stub") {
-            const user = stubLogin(provider);
-            dispatch(login(user));
+    const handleLogin = () => {
+        if (AUTH_MODE === 'stub') {
+            const stubUser = stubLogin();
+            dispatch(login(stubUser));
             closeAuthModal();
             return;
         }
 
-        // Real Auth Flow
-        if (provider === 'google') {
-            if (!window.google) {
-                alert("Google Sign-In script not loaded yet. Please wait...");
-                return;
-            }
-        } else if (provider === 'truecaller') {
-            handleTruecallerLogin();
+        if (!window.google) {
+            alert('Google Sign-In script not loaded yet. Please wait...');
         }
     };
 
-    // Effect to handle Truecaller Global Callback
-    useEffect(() => {
-        window.truecallerCallback = (data) => {
-            console.log("Truecaller Callback:", data);
-
-            if (data.code && data.message) {
-                if (data.code !== 400 && data.code !== 1) { // 1=Access Denied/User Cancelled generally
-                    alert(`Truecaller Error: ${data.message}`);
-                }
-                return;
-            }
-
-            if (data.requestId && data.accessToken) {
-                // Send to backend for verification
-                fetch(getApiUrl('/api/auth/truecaller'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessToken: data.accessToken })
-                })
-                    .then(res => res.json())
-                    .then(userData => {
-                        if (userData.error) throw new Error(userData.error);
-                        dispatch(login(userData));
-                        localStorage.setItem("logiclooper_user", JSON.stringify(userData));
-                        closeAuthModal();
-                        alert("Successfully logged in with Truecaller!");
-                    })
-                    .catch(err => {
-                        console.error("Truecaller Auth Failed:", err);
-                        alert("Authentication failed.");
-                    });
-            }
-        };
-
-        return () => {
-            delete window.truecallerCallback;
-        }
-    }, [dispatch]);
-
-    // Effect to render Google Button and Load Truecaller SDK
+    // Effect to render Google Button
     useEffect(() => {
         if (showModal && AUTH_MODE !== 'stub') {
-            // -- Google Init --
             const initGoogle = () => {
                 if (window.google && GOOGLE_CLIENT_ID) {
-                    // Check if allowed origin logic is handled by Google script, 
-                    // but we can catch basic errors in the callback if possible.
                     window.google.accounts.id.initialize({
                         client_id: GOOGLE_CLIENT_ID,
                         callback: handleGoogleResponse
@@ -224,10 +95,10 @@ const Header = () => {
                         try {
                             window.google.accounts.id.renderButton(
                                 btn,
-                                { theme: "outline", size: "large", width: "350" }
+                                { theme: 'outline', size: 'large', width: '350' }
                             );
                         } catch (e) {
-                            console.error("Google Render Error:", e);
+                            console.error('Google Render Error:', e);
                         }
                     }
                 }
@@ -235,7 +106,7 @@ const Header = () => {
 
             if (!window.google) {
                 const script = document.createElement('script');
-                script.src = "https://accounts.google.com/gsi/client";
+                script.src = 'https://accounts.google.com/gsi/client';
                 script.async = true;
                 script.defer = true;
                 script.onload = initGoogle;
@@ -243,54 +114,8 @@ const Header = () => {
             } else {
                 initGoogle();
             }
-
-            // -- Truecaller Init (Web SDK) --
-            if (TRUECALLER_APP_KEY) {
-                const initSDK = () => {
-                    if (window.Truecaller) {
-                        try {
-                            console.log("Initializing Truecaller SDK...");
-                            window.Truecaller.initialize({
-                                appKey: TRUECALLER_APP_KEY,
-                            });
-                            setTruecallerLoaded(true);
-                            console.log("Truecaller SDK Initialized");
-                        } catch (e) {
-                            console.error("Truecaller Init Error:", e);
-                            setTruecallerLoaded(true);
-                        }
-                    }
-                };
-
-                if (window.Truecaller) {
-                    initSDK();
-                } else if (!document.getElementById('truecaller-sdk')) {
-                    const tcScript = document.createElement('script');
-                    tcScript.id = 'truecaller-sdk';
-                    tcScript.src = "https://sdk.truecaller.com/js/v2/app.js";
-                    tcScript.async = true;
-                    tcScript.defer = true;
-                    tcScript.onload = initSDK;
-                    tcScript.onerror = () => console.error("Truecaller Script Load Failed");
-                    document.head.appendChild(tcScript);
-                } else {
-                    // Script exists but window.Truecaller missing? Poll for it.
-                    console.log("Truecaller script present, waiting for object...");
-                    let attempts = 0;
-                    const interval = setInterval(() => {
-                        attempts++;
-                        if (window.Truecaller) {
-                            clearInterval(interval);
-                            initSDK();
-                        } else if (attempts > 20) { // 10 seconds
-                            clearInterval(interval);
-                            console.error("Truecaller SDK Load Timeout");
-                        }
-                    }, 500);
-                }
-            }
         }
-    }, [showModal, AUTH_MODE, TRUECALLER_APP_KEY]);
+    }, [showModal, AUTH_MODE, GOOGLE_CLIENT_ID]);
 
     const Modal = () => createPortal(
         <div
@@ -302,34 +127,14 @@ const Header = () => {
                 <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Sign In</h2>
                 <div className="flex flex-col gap-3">
                     {AUTH_MODE === 'stub' ? (
-                        <>
-                            <button
-                                className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded transition-colors font-medium"
-                                onClick={() => handleLogin('google')}
-                            >
-                                Sign in with Google (Stub)
-                            </button>
-                            <button
-                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors font-medium"
-                                onClick={() => handleLogin('truecaller')}
-                            >
-                                Sign in with Truecaller (Stub)
-                            </button>
-                        </>
+                        <button
+                            className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded transition-colors font-medium"
+                            onClick={handleLogin}
+                        >
+                            Sign in with Google (Stub)
+                        </button>
                     ) : (
-                        <>
-                            {/* Google Button Container */}
-                            <div id="googleBtn" className="w-full flex justify-center min-h-[40px]"></div>
-
-                            {/* Truecaller button */}
-                            <button
-                                className={`w-full py-2 px-4 rounded transition-colors font-medium text-white ${truecallerLoaded ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-300 cursor-not-allowed'}`}
-                                onClick={() => handleLogin('truecaller')}
-                                disabled={!truecallerLoaded}
-                            >
-                                {truecallerLoaded ? 'Sign in with Truecaller' : 'Loading Truecaller...'}
-                            </button>
-                        </>
+                        <div id="googleBtn" className="w-full flex justify-center min-h-[40px]"></div>
                     )}
                 </div>
                 <button

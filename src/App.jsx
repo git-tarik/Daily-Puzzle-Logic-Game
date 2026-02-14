@@ -28,8 +28,7 @@ function App() {
 
       // Environment check (Verification only)
       console.log('Env Check:', {
-        google: import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Set' : 'Not Set',
-        truecaller: import.meta.env.VITE_TRUECALLER_APP_KEY ? 'Set' : 'Not Set'
+        google: import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Set' : 'Not Set'
       });
 
       let user = await getUser();

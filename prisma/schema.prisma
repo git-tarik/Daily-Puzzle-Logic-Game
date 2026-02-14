@@ -15,7 +15,7 @@ model User {
   username     String?  @unique
   passwordHash String?
   name         String?
-  authProvider String?  // "google" | "truecaller" | "guest" | "credentials"
+  authProvider String?  // "google" | "guest" | "credentials"
   streak       Int      @default(0)
   lastPlayed   DateTime?
   totalPoints  Int      @default(0)
