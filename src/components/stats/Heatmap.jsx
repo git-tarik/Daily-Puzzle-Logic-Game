@@ -6,10 +6,7 @@ const Heatmap = ({ heatmap = [] }) => {
     const days = useMemo(() => {
         const result = [];
         const today = dayjs();
-        // Show last ~2 months for Phase 1/3 MVP or 1 year?
-        // UI Request said "Simple grid". 
-        // Let's do last 60 days for nicer mobile fit.
-        for (let i = 59; i >= 0; i--) {
+        for (let i = 364; i >= 0; i--) {
             const date = today.subtract(i, 'day');
             result.push({
                 dateISO: date.format('YYYY-MM-DD'),
@@ -24,8 +21,8 @@ const Heatmap = ({ heatmap = [] }) => {
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Activity (Last 60 Days)</h3>
-            <div className="flex flex-wrap gap-1 max-w-sm">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Activity (Last 365 Days)</h3>
+            <div className="flex flex-wrap gap-1 max-w-2xl">
                 {days.map((d) => (
                     <div
                         key={d.dateISO}

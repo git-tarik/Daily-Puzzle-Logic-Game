@@ -8,18 +8,20 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String?  @unique
-  googleId     String?  @unique
-  phoneNumber  String?  @unique
-  username     String?  @unique
+  id           String       @id @default(uuid())
+  email        String?      @unique
+  googleId     String?      @unique
+  phoneNumber  String?      @unique
+  username     String?      @unique
   passwordHash String?
   name         String?
-  authProvider String?  // "google" | "truecaller" | "guest" | "credentials"
-  streak       Int      @default(0)
+  authProvider String?      // "google" | "truecaller" | "guest" | "credentials"
+  streak       Int          @default(0)
   lastPlayed   DateTime?
-  totalPoints  Int      @default(0)
-  createdAt    DateTime @default(now())
+  totalPoints  Int          @default(0)
+  createdAt    DateTime     @default(now())
+  dailyScores  DailyScore[]
+  userStats    UserStats?
 }
 
 model DailyScore {
@@ -29,4 +31,15 @@ model DailyScore {
   puzzleId  String
   score     Int
   timeTaken Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserStats {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  puzzlesSolved Int     @default(0)
+  avgSolveTime  Float   @default(0)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
 }

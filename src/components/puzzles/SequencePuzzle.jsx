@@ -1,34 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const SequencePuzzle = ({ puzzle, onSubmit }) => {
-    // Safety check for stale data
-    if (!puzzle.payload || !puzzle.payload.missingIndices) {
-        return <div className="text-red-500">Error: Invalid puzzle data. Please refresh.</div>;
-    }
+const EMPTY_ARRAY = [];
 
-    const { sequence, missingCount } = puzzle.payload;
-    const [inputs, setInputs] = useState({});
-
-    // Initialize inputs if gameState exists (resume)
-    useEffect(() => {
+const SequencePuzzle = ({ puzzle, onSubmit, onProgress }) => {
+    const isInvalidPuzzle = !puzzle.payload || !puzzle.payload.missingIndices;
+    const sequence = puzzle.payload?.sequence || EMPTY_ARRAY;
+    const [inputs, setInputs] = useState(() => {
         if (puzzle.gameState && Array.isArray(puzzle.gameState)) {
-            // If gameState is the full attempted array, map back to inputs
-            // We need to know which indices were missing to map correctly.
-            // But here inputs key is the index.
             const newInputs = {};
             sequence.forEach((val, idx) => {
-                if (val === null) {
-                    // Find what the user put here.
-                    // The gameState is the Full array [1, 2, 3, 4]
-                    // sequence is [1, null, 3, 4]
-                    if (puzzle.gameState[idx] !== null) {
-                        newInputs[idx] = puzzle.gameState[idx];
-                    }
+                if (val === null && puzzle.gameState[idx] !== null && puzzle.gameState[idx] !== undefined) {
+                    newInputs[idx] = puzzle.gameState[idx];
                 }
             });
-            setInputs(newInputs);
+            return newInputs;
         }
-    }, [puzzle.gameState, sequence]);
+        return {};
+    });
 
     const handleChange = (index, value) => {
         // simple validation: only numbers
@@ -39,6 +27,20 @@ const SequencePuzzle = ({ puzzle, onSubmit }) => {
             [index]: value
         }));
     };
+
+    useEffect(() => {
+        if (!onProgress || isInvalidPuzzle) return;
+        const gameState = sequence.map((val, idx) => {
+            if (val !== null) return val;
+            const inputValue = inputs[idx];
+            return inputValue ? Number(inputValue) : null;
+        });
+        onProgress(gameState);
+    }, [inputs, isInvalidPuzzle, onProgress, sequence]);
+
+    if (isInvalidPuzzle) {
+        return <div className="text-red-500">Error: Invalid puzzle data. Please refresh.</div>;
+    }
 
     const handleVerify = () => {
         const { missingIndices } = puzzle.payload;

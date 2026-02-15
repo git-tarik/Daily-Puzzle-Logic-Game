@@ -1,5 +1,3 @@
-import { hashSolution } from '../seed.js';
-
 /**
  * Validates a sequence puzzle attempt.
  * @param {object} puzzle - The puzzle object

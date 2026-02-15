@@ -14,6 +14,13 @@ db.version(2).stores({
     user: 'idLocal, guestName, streakCount, lastPlayedISO, heatmap, totalScore, unlockedAchievements'
 });
 
+// Version 3: Keep settings and extended progression metrics.
+db.version(3).stores({
+    puzzles: 'dateISO, puzzleSeed, puzzleType, progress, solved, attempts, hintsUsed, gameState, score, timeTaken, difficulty',
+    user: 'idLocal, guestName, streakCount, lastPlayedISO, heatmap, totalScore, unlockedAchievements, puzzlesSolved, avgSolveTime',
+    settings: 'key, value',
+});
+
 // Helper functions
 export const getPuzzle = async (dateISO) => {
     return await db.puzzles.get(dateISO);

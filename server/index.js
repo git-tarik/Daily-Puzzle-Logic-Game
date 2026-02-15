@@ -55,7 +55,7 @@ app.post('/api/score', async (req, res) => {
         const schema = z.object({
             userId: z.string(),
             dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-            puzzleType: z.enum(['sequence', 'matrix']),
+            puzzleType: z.enum(['sequence', 'matrix', 'pattern', 'deduction', 'binary']),
             score: z.number().int().min(0),
             timeTaken: z.number().int().min(0),
             attempt: z.any(),
@@ -122,6 +122,9 @@ app.post('/api/score', async (req, res) => {
         // Let's use Server Calculated Score.
 
         const serverScore = finalScore;
+        const existingStats = await prisma.userStats.findUnique({ where: { userId: user.id } });
+        const solvedCount = (existingStats?.puzzlesSolved || 0) + 1;
+        const avgSolveTime = Math.round((((existingStats?.avgSolveTime || 0) * (solvedCount - 1)) + data.timeTaken) / solvedCount);
 
         // 5. Check Top 100 Eligibility
         // Count scores for this date with score > serverScore
@@ -151,6 +154,18 @@ app.post('/api/score', async (req, res) => {
                         puzzleId: verification.puzzle.seed,
                         score: serverScore,
                         timeTaken: data.timeTaken
+                    }
+                }),
+                prisma.userStats.upsert({
+                    where: { userId: user.id },
+                    create: {
+                        userId: user.id,
+                        puzzlesSolved: 1,
+                        avgSolveTime: data.timeTaken
+                    },
+                    update: {
+                        puzzlesSolved: solvedCount,
+                        avgSolveTime
                     }
                 })
             ]);
@@ -201,6 +216,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
         res.json(leaderboard);
     } catch (e) {
+        console.error('Leaderboard Error:', e);
         res.status(500).json({ error: 'Server error' });
     }
 });

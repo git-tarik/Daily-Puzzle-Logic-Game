@@ -7,7 +7,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // -- CONFIG --
-const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
 const TRUECALLER_PROFILE_URL = process.env.TRUECALLER_PROFILE_URL || 'https://profile4.truecaller.com/v1/default';
 const TRUECALLER_REQUEST_TTL_MS = 10 * 60 * 1000;
 
@@ -454,6 +454,35 @@ router.post('/login', async (req, res) => {
         console.error('Login Error:', e);
         res.status(500).json({ error: 'Login failed' });
     }
+});
+
+// -- NEXTAUTH-COMPATIBLE BASELINE ENDPOINTS --
+router.get('/providers', (_req, res) => {
+    res.json({
+        google: { id: 'google', name: 'Google', type: 'oauth' },
+        truecaller: { id: 'truecaller', name: 'Truecaller', type: 'oauth' },
+        credentials: { id: 'credentials', name: 'Credentials', type: 'credentials' }
+    });
+});
+
+router.get('/session', async (req, res) => {
+    const userId = req.query.userId;
+    if (!userId) {
+        return res.json(null);
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: String(userId) } });
+    if (!user) return res.json(null);
+
+    return res.json({
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phoneNumber: user.phoneNumber
+        },
+        expires: new Date(Date.now() + (1000 * 60 * 60 * 24)).toISOString()
+    });
 });
 
 export default router;

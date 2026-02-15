@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getUser } from '../../lib/db';
 import Heatmap from './Heatmap';
 import AchievementsList from './AchievementsList';
+import Leaderboard from './Leaderboard';
 
 const StatsDashboard = () => {
     const [user, setUser] = useState(null);
@@ -53,6 +54,7 @@ const StatsDashboard = () => {
             {/* Right Col: Achievements */}
             <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <AchievementsList unlockedIds={user.unlockedAchievements} />
+                <Leaderboard />
             </div>
         </div>
     );

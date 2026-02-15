@@ -1,6 +1,6 @@
 import { createPRNG, hashSolution } from '../seed.js';
 
-export const generateMatrixPuzzle = (dateISO) => {
+export const generateMatrixPuzzle = (dateISO, difficulty = 1) => {
     const type = 'matrix';
     const prng = createPRNG(dateISO, type);
     const seed = `${dateISO}|${type}|LOGIC_LOOPER_V1`;
@@ -47,7 +47,9 @@ export const generateMatrixPuzzle = (dateISO) => {
     // A 4x4 latin square critical set size varies, but ~4-6 clues might be ambiguos. 
     // Let's keep about 6-8 cells visible.
 
-    const numVisible = Math.floor(prng() * 3) + 6; // 6 to 8 visible
+    const minVisible = Math.max(4, 8 - difficulty); // harder => fewer clues
+    const maxVisible = Math.max(minVisible, minVisible + 1);
+    const numVisible = Math.floor(prng() * (maxVisible - minVisible + 1)) + minVisible;
     const positions = [];
     for (let r = 0; r < 4; r++) {
         for (let c = 0; c < 4; c++) {

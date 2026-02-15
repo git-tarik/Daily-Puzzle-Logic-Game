@@ -1,5 +1,4 @@
 import { generatePuzzle } from './generatePuzzle.js';
-import registry from './generatorRegistry.js';
 
 console.log('--- Testing Determinism ---');
 

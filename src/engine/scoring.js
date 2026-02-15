@@ -1,4 +1,11 @@
-export const calculateScore = ({ difficulty = 1, timeTakenSeconds, hintsUsed, streak }) => {
+export const calculateScore = ({
+    difficulty = 1,
+    timeTakenSeconds,
+    hintsUsed,
+    streak,
+    timedMode = false,
+    timeLimitSeconds = 180
+}) => {
     const basePoints = difficulty * 100;
 
     // Time Bonus: 100 points minus 2 points per minute taken, min 0.
@@ -15,7 +22,10 @@ export const calculateScore = ({ difficulty = 1, timeTakenSeconds, hintsUsed, st
     const streakMultiplier = Math.min(streak * 0.05, 0.25);
     const streakBonusPoints = Math.round(Math.max(0, rawScore) * streakMultiplier);
 
-    const finalScore = Math.max(0, rawScore + streakBonusPoints);
+    // Timed mode bonus rewards fast solves when enabled.
+    const timedBonusPoints = timedMode && timeTakenSeconds <= timeLimitSeconds ? 50 : 0;
+
+    const finalScore = Math.max(0, rawScore + streakBonusPoints + timedBonusPoints);
 
     return {
         finalScore,
@@ -23,7 +33,8 @@ export const calculateScore = ({ difficulty = 1, timeTakenSeconds, hintsUsed, st
             basePoints,
             timeBonus,
             hintPenalty,
-            streakBonusPoints
+            streakBonusPoints,
+            timedBonusPoints
         }
     };
 };

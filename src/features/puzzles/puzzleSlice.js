@@ -4,6 +4,8 @@ import { checkAchievements } from '../../engine/achievements.js';
 import { generatePuzzle, validatePuzzle } from '../../engine/generatePuzzle';
 import { getPuzzle, savePuzzle, getUser, saveUser } from '../../lib/db';
 import dayjs from 'dayjs';
+import { getDailyPuzzleMeta } from '../../engine/dailyPlan';
+import { DAILY_HINT_LIMIT, getPuzzleHint } from '../../engine/hints';
 
 // Thunks
 export const fetchDailyPuzzle = createAsyncThunk(
@@ -13,26 +15,23 @@ export const fetchDailyPuzzle = createAsyncThunk(
             // 1. Try to load from DB
             let puzzle = await getPuzzle(dateISO);
 
-            // Check for stale data (Sequence puzzle missing new fields)
-            if (puzzle && puzzle.type === 'sequence' && (!puzzle.payload.missingIndices || !puzzle.payload.solution)) {
-                console.warn("Found stale sequence puzzle, regenerating...");
-                puzzle = null; // Force regeneration
-            }
-
             if (!puzzle) {
                 // 2. Generate new if not found
-                // Deterministically decide type based on date? Or just random for now?
-                // Requirement: "Same date + type -> identical puzzle". 
-                // We need to decide the type deterministically too if we want everyone to have the same puzzle type on the same day.
-                // Let's alternate or hash the date to pick type.
-                const dayOfMonth = dayjs(dateISO).date();
-                const type = dayOfMonth % 2 === 0 ? 'matrix' : 'sequence'; // Simple deterministic type selection
+                const { type, difficulty: baseDifficulty } = getDailyPuzzleMeta(dateISO);
+                const user = await getUser();
+                let adaptiveDelta = 0;
+                if ((user?.puzzlesSolved || 0) >= 3) {
+                    if ((user?.avgSolveTime || 0) < 180) adaptiveDelta = 1;
+                    if ((user?.avgSolveTime || 0) > 600) adaptiveDelta = -1;
+                }
+                const difficulty = Math.min(5, Math.max(1, baseDifficulty + adaptiveDelta));
 
-                const generated = generatePuzzle(dateISO, type);
+                const generated = generatePuzzle(dateISO, type, difficulty);
 
                 puzzle = {
                     dateISO,
                     ...generated,
+                    difficulty,
                     progress: 0,
                     solved: false,
                     attempts: [],
@@ -52,7 +51,7 @@ export const fetchDailyPuzzle = createAsyncThunk(
 
 export const submitPuzzleAttempt = createAsyncThunk(
     'puzzle/submitAttempt',
-    async ({ attempt, userState }, { getState, dispatch }) => {
+    async ({ attempt, timeTaken = 0, timedMode = false }, { getState }) => {
         const state = getState();
         const { currentPuzzle } = state.puzzle;
 
@@ -98,13 +97,12 @@ export const submitPuzzleAttempt = createAsyncThunk(
                 // For now, let's use a passed-in `timeTaken` from the UI or just 0 if missing.
                 // We'll update the component to pass it.
 
-                const timeTaken = attempt.timeTaken || 0;
-
                 const { finalScore, breakdown } = calculateScore({
-                    difficulty: 1, // Phase 3: "difficulty * 100", assume 1 for now or derive from type matrix=2?
+                    difficulty: currentPuzzle.difficulty || 1,
                     timeTakenSeconds: timeTaken,
                     hintsUsed: currentPuzzle.hintsUsed,
-                    streak: newStreak
+                    streak: newStreak,
+                    timedMode
                 });
 
                 // Check Achievements
@@ -122,6 +120,12 @@ export const submitPuzzleAttempt = createAsyncThunk(
                     lastPlayedISO: new Date().toISOString(),
                     heatmap: [...(user.heatmap || []), today],
                     totalScore: (user.totalScore || 0) + finalScore,
+                    puzzlesSolved: (user.puzzlesSolved || 0) + 1,
+                    avgSolveTime: (() => {
+                        const solvedSoFar = user.puzzlesSolved || 0;
+                        const prevAvg = user.avgSolveTime || 0;
+                        return Math.round(((prevAvg * solvedSoFar) + timeTaken) / (solvedSoFar + 1));
+                    })(),
                     unlockedAchievements: [...(user.unlockedAchievements || []), ...newAchievements]
                 });
 
@@ -139,12 +143,41 @@ export const submitPuzzleAttempt = createAsyncThunk(
     }
 );
 
+export const requestHint = createAsyncThunk(
+    'puzzle/requestHint',
+    async (_, { getState, rejectWithValue }) => {
+        const state = getState();
+        const puzzle = state.puzzle.currentPuzzle;
+        if (!puzzle) return rejectWithValue('No puzzle loaded');
+        if (puzzle.hintsUsed >= DAILY_HINT_LIMIT) {
+            return rejectWithValue(`Daily hint limit reached (${DAILY_HINT_LIMIT})`);
+        }
+
+        const updatedPuzzle = {
+            ...puzzle,
+            hintsUsed: puzzle.hintsUsed + 1
+        };
+        await savePuzzle(updatedPuzzle);
+
+        return {
+            updatedPuzzle,
+            hint: getPuzzleHint(updatedPuzzle)
+        };
+    }
+);
+
 export const saveProgress = createAsyncThunk(
     'puzzle/saveProgress',
     async (gameState, { getState }) => {
         const state = getState();
         const { currentPuzzle } = state.puzzle;
         if (!currentPuzzle) return;
+
+        const existing = currentPuzzle.gameState ?? null;
+        const incoming = gameState ?? null;
+        if (JSON.stringify(existing) === JSON.stringify(incoming)) {
+            return null;
+        }
 
         const updatedPuzzle = {
             ...currentPuzzle,
@@ -159,6 +192,7 @@ const initialState = {
     currentPuzzle: null,
     status: 'idle', // idle, loading, solved, failed
     validationResult: null, // { ok, reasons }
+    activeHint: null,
     loading: false,
     error: null
 };
@@ -169,6 +203,9 @@ const puzzleSlice = createSlice({
     reducers: {
         clearValidation: (state) => {
             state.validationResult = null;
+        },
+        clearHint: (state) => {
+            state.activeHint = null;
         }
     },
     extraReducers: (builder) => {
@@ -180,6 +217,7 @@ const puzzleSlice = createSlice({
             .addCase(fetchDailyPuzzle.fulfilled, (state, action) => {
                 state.loading = false;
                 state.currentPuzzle = action.payload;
+                state.activeHint = null;
                 if (action.payload.solved) state.status = 'solved';
                 else state.status = 'idle';
             })
@@ -207,9 +245,17 @@ const puzzleSlice = createSlice({
                 if (action.payload) {
                     state.currentPuzzle = action.payload;
                 }
+            })
+            .addCase(requestHint.fulfilled, (state, action) => {
+                state.currentPuzzle = action.payload.updatedPuzzle;
+                state.activeHint = action.payload.hint;
+                state.error = null;
+            })
+            .addCase(requestHint.rejected, (state, action) => {
+                state.error = action.payload || action.error.message || 'Unable to get hint';
             });
     },
 });
 
-export const { clearValidation } = puzzleSlice.actions;
+export const { clearValidation, clearHint } = puzzleSlice.actions;
 export default puzzleSlice.reducer;

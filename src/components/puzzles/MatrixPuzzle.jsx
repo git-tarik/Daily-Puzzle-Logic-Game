@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const MatrixPuzzle = ({ puzzle, onSubmit }) => {
-    const { initialGrid, fixedCells, rows, cols } = puzzle.payload;
+const MatrixPuzzle = ({ puzzle, onSubmit, onProgress }) => {
+    const { initialGrid, fixedCells } = puzzle.payload;
 
     // Grid state: 2D array
-    const [grid, setGrid] = useState(initialGrid);
-
-    // Load resume state
-    useEffect(() => {
+    const [grid, setGrid] = useState(() => {
         if (puzzle.gameState && Array.isArray(puzzle.gameState) && puzzle.gameState.length === 4) {
-            setGrid(puzzle.gameState);
+            return puzzle.gameState;
         }
-    }, [puzzle.gameState]);
+        return initialGrid;
+    });
 
     const isFixed = (r, c) => {
         return fixedCells.some(cell => cell.row === r && cell.col === c);
@@ -39,6 +37,11 @@ const MatrixPuzzle = ({ puzzle, onSubmit }) => {
     };
 
     const isComplete = grid.every(row => row.every(val => val !== null));
+
+    useEffect(() => {
+        if (!onProgress) return;
+        onProgress(grid);
+    }, [grid, onProgress]);
 
     return (
         <div className="flex flex-col items-center">

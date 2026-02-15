@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import styled from 'styled-components';
 import { login, loginGuest, logout } from '../../features/auth/authSlice';
 import { getApiUrl } from '../../lib/api';
 
 const TRUECALLER_MAX_POLL_ATTEMPTS = 5;
 const TRUECALLER_POLL_INTERVAL_MS = 3000;
+
+const BrandText = styled.div`
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+`;
 
 const Header = () => {
     const dispatch = useDispatch();
@@ -262,9 +273,7 @@ const Header = () => {
     return (
         <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-                    Logic Looper
-                </div>
+                <BrandText>Logic Looper</BrandText>
 
                 <div className="flex items-center gap-4">
                     {isAuthenticated ? (

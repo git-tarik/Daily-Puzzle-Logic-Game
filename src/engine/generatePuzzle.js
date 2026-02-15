@@ -3,15 +3,16 @@ import registry from './generatorRegistry.js';
 /**
  * Generates a puzzle for a specific date and type.
  * @param {string} dateISO - YYYY-MM-DD
- * @param {string} type - 'sequence' | 'matrix'
+ * @param {string} type - 'sequence' | 'matrix' | 'pattern' | 'deduction' | 'binary'
+ * @param {number} difficulty - 1..5
  * @returns {object} Pulse object
  */
-export const generatePuzzle = (dateISO, type) => {
+export const generatePuzzle = (dateISO, type, difficulty = 1) => {
     const handler = registry[type];
     if (!handler) {
         throw new Error(`Unknown puzzle type: ${type}`);
     }
-    return handler.generate(dateISO);
+    return handler.generate(dateISO, difficulty);
 };
 
 /**

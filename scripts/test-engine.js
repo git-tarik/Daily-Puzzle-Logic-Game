@@ -1,5 +1,5 @@
 
-import { generatePuzzle, validatePuzzle } from '../src/engine/generatePuzzle.js';
+import { generatePuzzle } from '../src/engine/generatePuzzle.js';
 import process from 'process';
 
 console.log("Starting Engine Verification...");

@@ -7,27 +7,49 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
+build
+coverage
+.out
+.tmp
+.temp
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Environment variables (CRITICAL: Never push these)
+# Local env files (never commit)
 .env
 .env.production
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.example
+
+# Prisma local DB files
+prisma/*.db
+prisma/*.db-journal
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.out
+*.err
+server_lint.txt
+
+# Optional local test folders
+clean-test/
+prisma-test/
