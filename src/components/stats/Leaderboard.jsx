@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import { getApiUrl } from '../../lib/api';
+import { cachedGet } from '../../lib/apiClient';
 
 const Leaderboard = () => {
     const [rows, setRows] = useState([]);
@@ -11,9 +11,13 @@ const Leaderboard = () => {
             setStatus('loading');
             try {
                 const today = dayjs().format('YYYY-MM-DD');
-                const res = await fetch(getApiUrl(`/api/leaderboard?date=${today}`));
-                if (!res.ok) throw new Error('Failed to fetch leaderboard');
-                const data = await res.json();
+                const data = await cachedGet(`/api/leaderboard?date=${today}`, {
+                    ttlMs: 120000,
+                    onUpdate: (fresh) => {
+                        setRows(Array.isArray(fresh) ? fresh.slice(0, 10) : []);
+                        setStatus('ready');
+                    }
+                });
                 setRows(Array.isArray(data) ? data.slice(0, 10) : []);
                 setStatus('ready');
             } catch {

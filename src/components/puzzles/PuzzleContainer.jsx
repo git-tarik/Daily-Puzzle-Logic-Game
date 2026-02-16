@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchDailyPuzzle,
@@ -7,13 +7,14 @@ import {
     requestHint,
     saveProgress
 } from '../../features/puzzles/puzzleSlice';
-import SequencePuzzle from './SequencePuzzle';
-import MatrixPuzzle from './MatrixPuzzle';
-import PatternPuzzle from './PatternPuzzle';
-import DeductionPuzzle from './DeductionPuzzle';
-import BinaryPuzzle from './BinaryPuzzle';
-import StatsDashboard from '../stats/StatsDashboard';
 import dayjs from 'dayjs';
+
+const SequencePuzzle = lazy(() => import('./SequencePuzzle'));
+const MatrixPuzzle = lazy(() => import('./MatrixPuzzle'));
+const PatternPuzzle = lazy(() => import('./PatternPuzzle'));
+const DeductionPuzzle = lazy(() => import('./DeductionPuzzle'));
+const BinaryPuzzle = lazy(() => import('./BinaryPuzzle'));
+const StatsDashboard = lazy(() => import('../stats/StatsDashboard'));
 
 const PuzzleContainer = () => {
     const dispatch = useDispatch();
@@ -164,7 +165,9 @@ const PuzzleContainer = () => {
                 </div>
 
                 <div className="mb-8 min-h-[300px] flex flex-col justify-center">
-                    {renderPuzzle()}
+                    <Suspense fallback={<div className="text-center text-sm text-gray-500">Loading puzzle UI...</div>}>
+                        {renderPuzzle()}
+                    </Suspense>
                 </div>
 
                 {validationResult && !validationResult.ok && !currentPuzzle.solved && (
@@ -219,7 +222,9 @@ const PuzzleContainer = () => {
 
             {(showStats || currentPuzzle.solved) && (
                 <div className="w-full flex justify-center animate-fade-in-up">
-                    <StatsDashboard />
+                    <Suspense fallback={<div className="text-sm text-gray-500">Loading stats...</div>}>
+                        <StatsDashboard />
+                    </Suspense>
                 </div>
             )}
         </div>

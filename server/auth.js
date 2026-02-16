@@ -2,9 +2,20 @@ import { OAuth2Client } from 'google-auth-library';
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const isProd = process.env.NODE_ENV === 'production';
+const logError = (...args) => {
+    if (!isProd) console.error(...args);
+};
+const logWarn = (...args) => {
+    if (!isProd) console.warn(...args);
+};
+const logInfo = (...args) => {
+    if (!isProd) console.log(...args);
+};
 
 // -- CONFIG --
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
@@ -16,6 +27,9 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // -- TRUECALLER STATE --
 const pendingTruecallerRequests = new Map();
+const googleSchema = z.object({ credential: z.string().min(1) });
+const registerSchema = z.object({ username: z.string().trim().min(3).max(64), password: z.string().min(6).max(128) });
+const loginSchema = z.object({ username: z.string().trim().min(1).max(64), password: z.string().min(1).max(128) });
 
 setInterval(() => {
     const now = Date.now();
@@ -172,7 +186,7 @@ const upsertTruecallerUser = async (profile) => {
             const onlineIdentitiesShape = Array.isArray(profile.onlineIdentities)
                 ? profile.onlineIdentities.map((entry) => (entry && typeof entry === 'object' ? Object.keys(entry) : typeof entry))
                 : null;
-            console.warn('Truecaller phone parsing failed', {
+            logWarn('Truecaller phone parsing failed', {
                 hasPhoneNumbers: Array.isArray(profile.phoneNumbers),
                 phoneNumbersShape: phoneArrayShape,
                 hasOnlineIdentities: Array.isArray(profile.onlineIdentities),
@@ -211,8 +225,9 @@ const upsertTruecallerUser = async (profile) => {
 
 router.post('/google', async (req, res) => {
     try {
-        const { credential } = req.body;
-        if (!credential) return res.status(400).json({ error: 'Missing credential' });
+        const parsed = googleSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ error: 'Missing credential' });
+        const { credential } = parsed.data;
 
         const ticket = await client.verifyIdToken({
             idToken: credential,
@@ -253,13 +268,12 @@ router.post('/google', async (req, res) => {
 
         res.json(user);
     } catch (e) {
-        console.error('Google Auth Error:', e);
+        logError('Google Auth Error:', e);
         res.status(500).json({ error: e.message || 'Internal Server Error' });
     }
 });
 
-// -- TRUECALLER AUTH --
-router.post('/truecaller/callback', async (req, res) => {
+const handleTruecallerCallback = async (req, res) => {
     const requestId = req.body.requestId || req.body.requestNonce;
     const accessToken = extractAccessToken(req.body);
     const status = String(req.body.status || '').toLowerCase();
@@ -276,7 +290,7 @@ router.post('/truecaller/callback', async (req, res) => {
             message: rejected ? 'User cancelled Truecaller sign in.' : 'Waiting for token from Truecaller callback.',
             timestamp: Date.now(),
         });
-        console.warn('Truecaller callback without usable access token', {
+        logWarn('Truecaller callback without usable access token', {
             requestId,
             status,
             hasAccessTokenKey: Object.prototype.hasOwnProperty.call(req.body || {}, 'accessToken'),
@@ -306,7 +320,7 @@ router.post('/truecaller/callback', async (req, res) => {
         }
 
         const profile = await profileResponse.json();
-        console.log('Truecaller profile keys:', Object.keys(profile || {}));
+        logInfo('Truecaller profile keys:', Object.keys(profile || {}));
         const user = await upsertTruecallerUser(profile);
 
         pendingTruecallerRequests.set(requestId, {
@@ -317,9 +331,9 @@ router.post('/truecaller/callback', async (req, res) => {
 
         return res.json({ ok: true });
     } catch (e) {
-        console.error('Truecaller Callback Error:', e);
+        logError('Truecaller Callback Error:', e);
         if (req.body && typeof req.body === 'object') {
-            console.error('Truecaller Callback payload keys:', Object.keys(req.body));
+            logError('Truecaller Callback payload keys:', Object.keys(req.body));
         }
         pendingTruecallerRequests.set(requestId, {
             status: 'error',
@@ -328,7 +342,12 @@ router.post('/truecaller/callback', async (req, res) => {
         });
         return res.json({ ok: true });
     }
-});
+};
+
+// -- TRUECALLER AUTH --
+router.post('/truecaller/callback', handleTruecallerCallback);
+// Compatibility: many providers are configured with /api/auth/callback as webhook target.
+router.post('/callback', handleTruecallerCallback);
 
 router.get('/truecaller/status', (req, res) => {
     const requestId = req.query.requestId || req.query.nonce;
@@ -384,7 +403,7 @@ router.post('/truecaller', async (req, res) => {
         const user = await upsertTruecallerUser(profile);
         return res.json(user);
     } catch (e) {
-        console.error('Truecaller Auth Error:', e);
+        logError('Truecaller Auth Error:', e);
         return res.status(500).json({ error: e.message || 'Truecaller authentication failed' });
     }
 });
@@ -392,9 +411,9 @@ router.post('/truecaller', async (req, res) => {
 // -- CREDENTIALS AUTH --
 router.post('/register', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-        if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        const parsed = registerSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ error: 'Username and password required' });
+        const { username, password } = parsed.data;
 
         const existingUser = await prisma.user.findFirst({
             where: {
@@ -424,15 +443,16 @@ router.post('/register', async (req, res) => {
         res.json(userSafe);
 
     } catch (e) {
-        console.error('Register Error:', e);
+        logError('Register Error:', e);
         res.status(500).json({ error: 'Registration failed' });
     }
 });
 
 router.post('/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+        const parsed = loginSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ error: 'Username and password required' });
+        const { username, password } = parsed.data;
 
         const user = await prisma.user.findFirst({
             where: { username }
@@ -451,7 +471,7 @@ router.post('/login', async (req, res) => {
         res.json(userSafe);
 
     } catch (e) {
-        console.error('Login Error:', e);
+        logError('Login Error:', e);
         res.status(500).json({ error: 'Login failed' });
     }
 });

@@ -1,3 +1,5 @@
+import { logger } from '../../lib/logger.js';
+
 /**
  * Validates a sequence puzzle attempt.
  * @param {object} puzzle - The puzzle object
@@ -6,7 +8,7 @@
  */
 export const validateSequence = (puzzle, attempt) => {
     if (!puzzle.payload || !puzzle.payload.missingIndices || !puzzle.payload.solution) {
-        console.error("Validator Error: Stale or invalid puzzle data", puzzle);
+        logger.error('Validator Error: Stale or invalid puzzle data', puzzle);
         return { ok: false, reasons: ['System error: Invalid puzzle data. Please refresh.'] };
     }
 

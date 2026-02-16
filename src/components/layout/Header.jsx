@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 import { login, loginGuest, logout } from '../../features/auth/authSlice';
-import { getApiUrl } from '../../lib/api';
+import { getJson, postJson } from '../../lib/apiClient';
+import { logger } from '../../lib/logger.js';
 
-const TRUECALLER_MAX_POLL_ATTEMPTS = 5;
+const TRUECALLER_MAX_POLL_ATTEMPTS = 20;
 const TRUECALLER_POLL_INTERVAL_MS = 3000;
 
 const BrandText = styled.div`
@@ -48,28 +49,17 @@ const Header = () => {
 
     const handleLogout = () => {
         dispatch(logout());
-        localStorage.removeItem('logiclooper_user');
+        sessionStorage.removeItem('logiclooper_user');
     };
 
     const handleGoogleResponse = useCallback(async (response) => {
         try {
-            const res = await fetch(getApiUrl('/api/auth/google'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credential: response.credential })
-            });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || 'Google Auth Failed');
-            }
-
-            const userData = await res.json();
+            const userData = await postJson('/api/auth/google', { credential: response.credential });
             dispatch(login(userData));
-            localStorage.setItem('logiclooper_user', JSON.stringify(userData));
+            sessionStorage.setItem('logiclooper_user', JSON.stringify(userData));
             closeAuthModal();
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             alert('Google Login Failed: ' + error.message);
         }
     }, [dispatch]);
@@ -84,7 +74,7 @@ const Header = () => {
             createdAt: new Date().toISOString()
         };
 
-        localStorage.setItem('logiclooper_user', JSON.stringify(stubUser));
+        sessionStorage.setItem('logiclooper_user', JSON.stringify(stubUser));
         return stubUser;
     };
 
@@ -112,12 +102,11 @@ const Header = () => {
     const pollTruecallerStatus = useCallback(async (requestId) => {
         try {
             for (let attempt = 0; attempt < TRUECALLER_MAX_POLL_ATTEMPTS; attempt += 1) {
-                const res = await fetch(getApiUrl(`/api/auth/truecaller/status?requestId=${encodeURIComponent(requestId)}`));
-                const body = await res.json();
+                const body = await getJson(`/api/auth/truecaller/status?requestId=${encodeURIComponent(requestId)}`);
 
                 if (body.status === 'authenticated' && body.user) {
                     dispatch(login(body.user));
-                    localStorage.setItem('logiclooper_user', JSON.stringify(body.user));
+                    sessionStorage.setItem('logiclooper_user', JSON.stringify(body.user));
                     closeAuthModal();
                     alert('Successfully logged in with Truecaller');
                     return;
@@ -137,7 +126,7 @@ const Header = () => {
 
             alert('Truecaller verification timed out. Please try again.');
         } catch (error) {
-            console.error('Truecaller Poll Error:', error);
+            logger.error('Truecaller Poll Error:', error);
             alert('Truecaller Login Failed: ' + error.message);
         } finally {
             setIsTruecallerLoading(false);
@@ -202,7 +191,7 @@ const Header = () => {
                             width: '350'
                         });
                     } catch (e) {
-                        console.error('Google Render Error:', e);
+                        logger.error('Google Render Error:', e);
                     }
                 }
             }

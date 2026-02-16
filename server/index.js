@@ -5,230 +5,278 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-
-// We'll import engine logic later
-// import { generatePuzzle, validatePuzzle } from '../src/engine/generatePuzzle.js';
-// import { calculateScore } from '../src/engine/scoring.js';
+import { verifyScoreSubmission } from './verification.js';
+import { calculateScore } from '../src/engine/scoring.js';
+import authRouter from './auth.js';
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
+const isProd = process.env.NODE_ENV === 'production';
 
-// Render is behind a reverse proxy, so trust X-Forwarded-* headers.
 app.set('trust proxy', 1);
 
-// Middlewares
 app.use(helmet());
 app.use((req, res, next) => {
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     next();
 });
-app.use(cors()); // Restrict origin in prod
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+    cors({
+        origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
+        credentials: true,
+    })
+);
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Rate Limiting
-const limiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 100, // Limit each IP to 100 requests per windowMs
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
 });
-app.use('/api', limiter);
 
-// Health Check
-app.get('/health', (req, res) => {
+const scoreLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const validateBody = (schema) => (req, res, next) => {
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({
+            error: 'Invalid request payload',
+            details: parsed.error.issues.map((issue) => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+            })),
+        });
+    }
+    req.validatedBody = parsed.data;
+    return next();
+};
+
+const validateQuery = (schema) => (req, res, next) => {
+    const parsed = schema.safeParse(req.query);
+    if (!parsed.success) {
+        return res.status(400).json({
+            error: 'Invalid query parameters',
+            details: parsed.error.issues.map((issue) => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+            })),
+        });
+    }
+    req.validatedQuery = parsed.data;
+    return next();
+};
+
+const scoreSubmissionSchema = z
+    .object({
+        userId: z.string().trim().min(1).max(128),
+        dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        puzzleType: z.enum(['sequence', 'matrix', 'pattern', 'deduction', 'binary']),
+        timeTaken: z.number().int().min(0).max(24 * 60 * 60),
+        attempt: z.unknown(),
+        solutionProof: z.string().trim().min(1).max(256),
+        difficulty: z.number().int().min(1).max(5).default(1),
+        hintsUsed: z.number().int().min(0).max(20).default(0),
+        timedMode: z.boolean().default(false),
+    })
+    .strict();
+
+const leaderboardQuerySchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+const processScoreSubmission = async (submission) => {
+    let user = await prisma.user.findUnique({ where: { id: submission.userId } });
+    if (!user) {
+        user = await prisma.user.create({ data: { id: submission.userId } });
+    }
+
+    const puzzleDate = new Date(submission.dateISO);
+    const now = new Date();
+    const diffHours = (puzzleDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (diffHours > 24) {
+        return { ok: false, status: 400, body: { error: 'Cannot submit for future dates' } };
+    }
+
+    const verification = verifyScoreSubmission(submission);
+    if (!verification.valid) {
+        return { ok: false, status: 400, body: { error: `Verification failed: ${verification.reason}` } };
+    }
+
+    const yesterday = new Date(submission.dateISO);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayISO = yesterday.toISOString().split('T')[0];
+
+    const lastPlayedISO = user.lastPlayed ? user.lastPlayed.toISOString().split('T')[0] : null;
+    let effectiveStreak = 1;
+    if (lastPlayedISO === yesterdayISO) {
+        effectiveStreak = user.streak + 1;
+    } else if (lastPlayedISO === submission.dateISO) {
+        effectiveStreak = user.streak;
+    }
+
+    const { finalScore } = calculateScore({
+        difficulty: submission.difficulty,
+        timeTakenSeconds: submission.timeTaken,
+        hintsUsed: submission.hintsUsed,
+        streak: effectiveStreak,
+        timedMode: submission.timedMode,
+    });
+    const serverScore = finalScore;
+
+    const existingStats = await prisma.userStats.findUnique({ where: { userId: user.id } });
+    const solvedCount = (existingStats?.puzzlesSolved || 0) + 1;
+    const avgSolveTime = Math.round(
+        (((existingStats?.avgSolveTime || 0) * (solvedCount - 1)) + submission.timeTaken) / solvedCount
+    );
+
+    const betterScoresCount = await prisma.dailyScore.count({
+        where: {
+            date: new Date(submission.dateISO),
+            score: { gt: serverScore },
+        },
+    });
+
+    if (betterScoresCount >= 100) {
+        return { ok: true, status: 200, body: { status: 'ignored', reason: 'Not in top 100' } };
+    }
+
+    await prisma.$transaction([
+        prisma.user.update({
+            where: { id: user.id },
+            data: {
+                streak: effectiveStreak,
+                lastPlayed: new Date(submission.dateISO),
+                totalPoints: { increment: serverScore },
+            },
+        }),
+        prisma.dailyScore.create({
+            data: {
+                userId: user.id,
+                date: new Date(submission.dateISO),
+                puzzleId: verification.puzzle.seed,
+                score: serverScore,
+                timeTaken: submission.timeTaken,
+            },
+        }),
+        prisma.userStats.upsert({
+            where: { userId: user.id },
+            create: {
+                userId: user.id,
+                puzzlesSolved: 1,
+                avgSolveTime: submission.timeTaken,
+            },
+            update: {
+                puzzlesSolved: solvedCount,
+                avgSolveTime,
+            },
+        }),
+    ]);
+
+    return { ok: true, status: 200, body: { status: 'ranked', score: serverScore, rank: betterScoresCount + 1 } };
+};
+
+app.use('/api', apiLimiter);
+
+app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
 });
 
-// API Routes Stubs
-import { verifyScoreSubmission } from './verification.js';
-import { calculateScore } from '../src/engine/scoring.js';
+app.use('/api/auth', authLimiter, authRouter);
 
-import authRouter from './auth.js';
-
-app.use('/api/auth', authRouter);
-
-app.post('/api/score', async (req, res) => {
+app.post('/api/score', scoreLimiter, validateBody(scoreSubmissionSchema), async (req, res) => {
     try {
-        const schema = z.object({
-            userId: z.string(),
-            dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-            puzzleType: z.enum(['sequence', 'matrix', 'pattern', 'deduction', 'binary']),
-            score: z.number().int().min(0),
-            timeTaken: z.number().int().min(0),
-            attempt: z.any(),
-            solutionProof: z.string(),
-            difficulty: z.number().int().min(1).max(5).default(1),
-            hintsUsed: z.number().int().min(0).default(0),
-            timedMode: z.boolean().default(false)
-        });
-
-        const data = schema.parse(req.body);
-
-        // 1. Fetch User (or create stub if we allowed anon, but we are requiring ID)
-        // For Phase 4, let's assume valid userId or create if not exists (lazy auth)
-        let user = await prisma.user.findUnique({ where: { id: data.userId } });
-        if (!user) {
-            user = await prisma.user.create({ data: { id: data.userId } });
+        const result = await processScoreSubmission(req.validatedBody);
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        if (!isProd) {
+            console.error(error);
         }
-
-        // 2. Prevent Future Dates (> 1 day ahead)
-        const puzzleDate = new Date(data.dateISO);
-        const now = new Date();
-        const diffHours = (puzzleDate - now) / (1000 * 60 * 60);
-        if (diffHours > 24) {
-            return res.status(400).json({ error: 'Cannot submit for future dates' });
-        }
-
-        // 3. Verify Submission
-        const verification = verifyScoreSubmission({ ...data });
-        if (!verification.valid) {
-            return res.status(400).json({ error: 'Verification failed: ' + verification.reason });
-        }
-
-        // 4. Re-calculate Score locally to ensure match
-        // We need strictly the user's current streak from DB? 
-        // Or if this is a historical submission, streak calc is hard.
-        // Simplified: Recalculate based on User's DB streak? 
-        // Issue: If simple client-first, user might have played offline. 
-        // We will Trust the score MATH but verify the inputs (time, difficulty).
-        // Let's rely on server calculation using DB streak for security.
-
-        // Check streak continuity:
-        // If lastPlayed was yesterday, streak = dbStreak + 1. Else 1.
-        // This effectively enforces server-side streak tracking.
-        const yesterday = new Date(data.dateISO);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayISO = yesterday.toISOString().split('T')[0];
-
-        const lastPlayedISO = user.lastPlayed ? user.lastPlayed.toISOString().split('T')[0] : null;
-        let effectiveStreak = 1;
-        if (lastPlayedISO === yesterdayISO) {
-            effectiveStreak = user.streak + 1;
-        } else if (lastPlayedISO === data.dateISO) {
-            effectiveStreak = user.streak; // Same day replay?
-        }
-
-        // Recalculate
-        const { finalScore } = calculateScore({
-            difficulty: data.difficulty,
-            timeTakenSeconds: data.timeTaken,
-            hintsUsed: data.hintsUsed,
-            streak: effectiveStreak,
-            timedMode: data.timedMode
-        });
-
-        // Tolerance? Or strict match? 
-        // If client says 100 but we calc 90, we take 90.
-        // If client says 90 but we calc 100, we take 100?
-        // Let's use Server Calculated Score.
-
-        const serverScore = finalScore;
-        const existingStats = await prisma.userStats.findUnique({ where: { userId: user.id } });
-        const solvedCount = (existingStats?.puzzlesSolved || 0) + 1;
-        const avgSolveTime = Math.round((((existingStats?.avgSolveTime || 0) * (solvedCount - 1)) + data.timeTaken) / solvedCount);
-
-        // 5. Check Top 100 Eligibility
-        // Count scores for this date with score > serverScore
-        const betterScoresCount = await prisma.dailyScore.count({
-            where: {
-                date: new Date(data.dateISO),
-                score: { gte: serverScore }
-            }
-        });
-
-        if (betterScoresCount < 100) {
-            // Qualified!
-            // Update User & Insert Score
-            await prisma.$transaction([
-                prisma.user.update({
-                    where: { id: user.id },
-                    data: {
-                        streak: effectiveStreak,
-                        lastPlayed: new Date(data.dateISO),
-                        totalPoints: { increment: serverScore }
-                    }
-                }),
-                prisma.dailyScore.create({
-                    data: {
-                        userId: user.id,
-                        date: new Date(data.dateISO),
-                        puzzleId: verification.puzzle.seed,
-                        score: serverScore,
-                        timeTaken: data.timeTaken
-                    }
-                }),
-                prisma.userStats.upsert({
-                    where: { userId: user.id },
-                    create: {
-                        userId: user.id,
-                        puzzlesSolved: 1,
-                        avgSolveTime: data.timeTaken
-                    },
-                    update: {
-                        puzzlesSolved: solvedCount,
-                        avgSolveTime
-                    }
-                })
-            ]);
-            return res.json({ status: 'ranked', score: serverScore, rank: betterScoresCount + 1 });
-        } else {
-            return res.json({ status: 'ignored', reason: 'Not in top 100' });
-        }
-
-    } catch (e) {
-        console.error(e);
-        res.status(400).json({ error: e.message || 'Invalid request' });
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
-app.get('/api/leaderboard', async (req, res) => {
-    try {
-        const dateISO = req.query.date;
-        if (!dateISO || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) {
-            return res.status(400).json({ error: 'Invalid date format' });
+app.post(
+    '/api/score/batch',
+    scoreLimiter,
+    validateBody(
+        z.object({
+            submissions: z.array(scoreSubmissionSchema).min(1).max(10),
+        })
+    ),
+    async (req, res) => {
+        try {
+            const results = [];
+            for (const submission of req.validatedBody.submissions) {
+                const result = await processScoreSubmission(submission);
+                results.push({
+                    userId: submission.userId,
+                    dateISO: submission.dateISO,
+                    ...result.body,
+                });
+            }
+            return res.json({ results });
+        } catch (error) {
+            if (!isProd) {
+                console.error(error);
+            }
+            return res.status(500).json({ error: 'Batch submission failed' });
         }
+    }
+);
 
+app.get('/api/leaderboard', validateQuery(leaderboardQuerySchema), async (req, res) => {
+    try {
+        const { date } = req.validatedQuery;
         const scores = await prisma.dailyScore.findMany({
             where: {
-                date: new Date(dateISO)
+                date: new Date(date),
             },
             take: 100,
             orderBy: {
-                score: 'desc'
+                score: 'desc',
             },
             include: {
                 user: {
-                    select: { id: true, streak: true } // Don't leak emails
-                }
-            }
+                    select: { id: true, streak: true },
+                },
+            },
         });
 
-        // Format for client
-        const leaderboard = scores.map(s => ({
-            rank: 0, // populate in map
-            name: `User ${s.user.id.slice(0, 4)}`, // Anon name for now
-            score: s.score,
-            streak: s.user.streak,
-            timeTaken: s.timeTaken
+        const leaderboard = scores.map((score, index) => ({
+            rank: index + 1,
+            name: `User ${score.user.id.slice(0, 4)}`,
+            score: score.score,
+            streak: score.user.streak,
+            timeTaken: score.timeTaken,
         }));
 
-        // Add ranks
-        leaderboard.forEach((item, index) => item.rank = index + 1);
-
-        res.json(leaderboard);
-    } catch (e) {
-        console.error('Leaderboard Error:', e);
-        res.status(500).json({ error: 'Server error' });
+        return res.json(leaderboard);
+    } catch (error) {
+        if (!isProd) {
+            console.error(error);
+        }
+        return res.status(500).json({ error: 'Server error' });
     }
 });
 
-app.post('/api/auth/callback', (req, res) => {
-    res.json({ message: 'Auth stub received' });
-});
-
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    if (!isProd) {
+        console.log(`Server running on http://localhost:${PORT}`);
+    }
 });

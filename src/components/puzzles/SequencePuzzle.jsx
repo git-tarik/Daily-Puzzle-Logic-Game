@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../../lib/logger.js';
 
 const EMPTY_ARRAY = [];
 
@@ -51,12 +52,7 @@ const SequencePuzzle = ({ puzzle, onSubmit, onProgress }) => {
             return val ? parseInt(val, 10) : null;
         });
 
-        // Debug logging as requested (temporary)
-        console.log('Validating attempt:', {
-            missingIndices,
-            inputs,
-            attempt
-        });
+        logger.info('Validating attempt', { missingIndices, inputs, attempt });
 
         onSubmit(attempt);
     };

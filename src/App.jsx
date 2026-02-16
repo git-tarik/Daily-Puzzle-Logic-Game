@@ -1,15 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import Home from './pages/Home';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsOfService from './pages/TermsOfService';
-import PuzzleContainer from './components/puzzles/PuzzleContainer';
 import { getUser, saveUser } from './lib/db';
 import { login } from './features/auth/authSlice';
 import { useDailyReset } from './hooks/useDailyReset';
-import { preGenerateYearPuzzles } from './features/puzzles/puzzleSlice';
+import { ensurePuzzleWindow } from './lib/puzzleWindowManager';
+import dayjs from 'dayjs';
+import { initializeBatchSync } from './lib/batchSync';
+import { logger } from './lib/logger.js';
+
+const Home = lazy(() => import('./pages/Home'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PuzzleContainer = lazy(() => import('./components/puzzles/PuzzleContainer'));
 
 function App() {
     const dispatch = useDispatch();
@@ -23,12 +27,12 @@ function App() {
     useEffect(() => {
         const initUser = async () => {
             if (import.meta.env.VITE_AUTH_MODE === 'stub') {
-                const stubUserStr = localStorage.getItem('logiclooper_user');
+                const stubUserStr = sessionStorage.getItem('logiclooper_user');
                 if (stubUserStr) {
                     try {
                         dispatch(login(JSON.parse(stubUserStr)));
                     } catch (err) {
-                        console.error('Failed to parse stub user', err);
+                        logger.error('Failed to parse stub user', err);
                     }
                 }
             }
@@ -49,12 +53,13 @@ function App() {
                 await saveUser(user);
             }
 
-            // Warm up 365 daily puzzles in local IndexedDB for offline-first play.
-            dispatch(preGenerateYearPuzzles());
+            await ensurePuzzleWindow(dayjs().format('YYYY-MM-DD'));
         };
 
         initUser();
     }, [dispatch]);
+
+    useEffect(() => initializeBatchSync(), []);
 
     useEffect(() => {
         const onPopState = () => setPath(window.location.pathname.toLowerCase());
@@ -66,24 +71,26 @@ function App() {
         <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-200">
             <Header />
             <main className="flex-grow container mx-auto px-4 py-8">
-                {path === '/privacy' && <PrivacyPolicy />}
-                {path === '/terms' && <TermsOfService />}
-                {path !== '/privacy' && path !== '/terms' && (
-                    <>
-                        {view === 'home' && <Home onStart={() => setView('puzzle')} />}
-                        {view === 'puzzle' && (
-                            <div>
-                                <button
-                                    onClick={() => setView('home')}
-                                    className="mb-4 text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1"
-                                >
-                                    Back to Home
-                                </button>
-                                <PuzzleContainer />
-                            </div>
-                        )}
-                    </>
-                )}
+                <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Loading...</div>}>
+                    {path === '/privacy' && <PrivacyPolicy />}
+                    {path === '/terms' && <TermsOfService />}
+                    {path !== '/privacy' && path !== '/terms' && (
+                        <>
+                            {view === 'home' && <Home onStart={() => setView('puzzle')} />}
+                            {view === 'puzzle' && (
+                                <div>
+                                    <button
+                                        onClick={() => setView('home')}
+                                        className="mb-4 text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1"
+                                    >
+                                        Back to Home
+                                    </button>
+                                    <PuzzleContainer />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </Suspense>
             </main>
             <Footer />
         </div>
