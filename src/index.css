@@ -1,1 +1,148 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap");
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
 @import "tailwindcss";
+
+:root {
+  --bluestock-primary-dark: #222222;
+  --bluestock-primary-blue: #414BEA;
+  --bluestock-light-blue: #D9E2FF;
+  --bluestock-accent-orange: #F05537;
+  --bluestock-background-light: #F6F5F5;
+  --bluestock-pure-white: #FFFFFF;
+  --bluestock-secondary-purple: #7752FE;
+  --bluestock-deep-purple: #190482;
+  --bluestock-sky-blue: #DDF2FD;
+  --bluestock-soft-blue: #C2D9FF;
+  --bluestock-dark-grey: #3D3B40;
+  --bluestock-bright-blue: #525CEB;
+  --bluestock-muted-blue: #BFCFE7;
+  --bluestock-soft-lavender: #F8EDFF;
+}
+
+@theme {
+  --color-black: var(--bluestock-primary-dark);
+  --color-white: var(--bluestock-pure-white);
+
+  --color-gray-50: var(--bluestock-background-light);
+  --color-gray-100: var(--bluestock-sky-blue);
+  --color-gray-200: var(--bluestock-soft-blue);
+  --color-gray-300: var(--bluestock-muted-blue);
+  --color-gray-400: var(--bluestock-muted-blue);
+  --color-gray-500: var(--bluestock-dark-grey);
+  --color-gray-600: var(--bluestock-dark-grey);
+  --color-gray-700: var(--bluestock-primary-dark);
+  --color-gray-800: var(--bluestock-primary-dark);
+  --color-gray-900: var(--bluestock-primary-dark);
+  --color-gray-950: var(--bluestock-deep-purple);
+
+  --color-indigo-300: var(--bluestock-soft-blue);
+  --color-indigo-400: var(--bluestock-bright-blue);
+  --color-indigo-500: var(--bluestock-primary-blue);
+  --color-indigo-600: var(--bluestock-primary-blue);
+  --color-indigo-700: var(--bluestock-bright-blue);
+  --color-indigo-800: var(--bluestock-deep-purple);
+
+  --color-blue-300: var(--bluestock-soft-blue);
+  --color-blue-500: var(--bluestock-primary-blue);
+  --color-blue-600: var(--bluestock-primary-blue);
+  --color-blue-700: var(--bluestock-bright-blue);
+
+  --color-purple-400: var(--bluestock-secondary-purple);
+  --color-purple-600: var(--bluestock-secondary-purple);
+
+  --color-cyan-500: var(--bluestock-sky-blue);
+
+  --color-red-50: var(--bluestock-soft-lavender);
+  --color-red-100: var(--bluestock-soft-lavender);
+  --color-red-200: var(--bluestock-soft-blue);
+  --color-red-300: var(--bluestock-soft-blue);
+  --color-red-400: var(--bluestock-accent-orange);
+  --color-red-500: var(--bluestock-accent-orange);
+  --color-red-600: var(--bluestock-accent-orange);
+  --color-red-700: var(--bluestock-accent-orange);
+  --color-red-800: var(--bluestock-dark-grey);
+  --color-red-900: var(--bluestock-primary-dark);
+
+  --color-green-50: var(--bluestock-light-blue);
+  --color-green-100: var(--bluestock-soft-blue);
+  --color-green-200: var(--bluestock-muted-blue);
+  --color-green-400: var(--bluestock-bright-blue);
+  --color-green-500: var(--bluestock-primary-blue);
+  --color-green-600: var(--bluestock-primary-blue);
+  --color-green-800: var(--bluestock-dark-grey);
+  --color-green-900: var(--bluestock-primary-dark);
+
+  --color-amber-50: var(--bluestock-soft-lavender);
+  --color-amber-200: var(--bluestock-soft-blue);
+  --color-amber-900: var(--bluestock-primary-dark);
+  --color-orange-50: var(--bluestock-soft-lavender);
+  --color-orange-900: var(--bluestock-primary-dark);
+  --color-yellow-50: var(--bluestock-soft-lavender);
+  --color-yellow-200: var(--bluestock-soft-blue);
+  --color-yellow-800: var(--bluestock-dark-grey);
+  --color-yellow-900: var(--bluestock-primary-dark);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html,
+body {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  background-color: var(--bluestock-background-light);
+  color: var(--bluestock-primary-dark);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+}
+
+p,
+span,
+label,
+input,
+textarea,
+select,
+button,
+li,
+a,
+td,
+th {
+  font-family: "Poppins", sans-serif;
+}
+
+.font-bold,
+.font-extrabold,
+.font-black {
+  font-weight: 600 !important;
+}
+
+.font-medium {
+  font-weight: 500 !important;
+}
+
+.brand-secondary-font {
+  font-family: "Open Sans", sans-serif;
+}
+
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.bg-white.rounded-lg {
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--bluestock-primary-dark) 10%, transparent);
+}
+
+.brand-icon {
+  color: var(--bluestock-primary-blue);
+  font-size: 1.25rem;
+  line-height: 1;
+}

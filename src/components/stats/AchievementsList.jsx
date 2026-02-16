@@ -17,7 +17,9 @@ const AchievementsList = ({ unlockedIds = [] }) => {
                                 ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/10 dark:to-orange-900/10 border-yellow-200 dark:border-yellow-800'
                                 : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-60 grayscale'
                             }`}>
-                            <div className="text-2xl">{ach.icon}</div>
+                            <div className="text-2xl">
+                                <i className={`${ach.icon} brand-icon`} aria-hidden="true"></i>
+                            </div>
                             <div>
                                 <div className={`text-sm font-bold ${isUnlocked ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
                                     {ach.name}

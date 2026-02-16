@@ -12,7 +12,7 @@ const BrandText = styled.div`
     font-size: 1.25rem;
     font-weight: 800;
     letter-spacing: 0.01em;
-    background: linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%);
+    background: linear-gradient(90deg, var(--bluestock-primary-blue) 0%, var(--bluestock-secondary-purple) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
