@@ -1,11 +1,11 @@
 import { generatePuzzle, validatePuzzle } from '../src/engine/generatePuzzle.js';
 
-export const verifyScoreSubmission = ({ dateISO, puzzleType, solutionProof, attempt }) => {
+export const verifyScoreSubmission = ({ dateISO, puzzleType, solutionProof, attempt, difficulty = 1 }) => {
     // 1. Regenerate Puzzle
     // Note: generatePuzzle uses src/engine which uses seedrandom. 
     // We must ensure the server environment produces same result. 
     // seedrandom is deterministic, so it should work if dateISO constitutes the seed correctly.
-    const puzzle = generatePuzzle(dateISO, puzzleType);
+    const puzzle = generatePuzzle(dateISO, puzzleType, difficulty);
 
     // 2. Validate Attempt (Structure & Rules)
     const validation = validatePuzzle(puzzleType, puzzle, attempt);

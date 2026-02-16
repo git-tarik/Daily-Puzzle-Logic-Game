@@ -32,21 +32,28 @@ const PuzzleContainer = () => {
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const challengePayload = params.get('challenge');
-        if (challengePayload) {
-            try {
-                const parsed = JSON.parse(decodeURIComponent(challengePayload));
-                if (parsed?.dateISO) {
-                    dispatch(fetchDailyPuzzle(parsed.dateISO));
-                    return;
+        const loadChallengeOrToday = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const challengePayload = params.get('challenge');
+            if (challengePayload) {
+                try {
+                    const parsed = JSON.parse(decodeURIComponent(challengePayload));
+                    if (parsed?.dateISO) {
+                        await dispatch(fetchDailyPuzzle(parsed.dateISO)).unwrap();
+                        if (parsed.gameState != null) {
+                            dispatch(saveProgress(parsed.gameState));
+                        }
+                        return;
+                    }
+                } catch {
+                    // Ignore malformed challenge links.
                 }
-            } catch {
-                // Ignore malformed challenge links.
             }
-        }
 
-        dispatch(fetchDailyPuzzle(dayjs().format('YYYY-MM-DD')));
+            dispatch(fetchDailyPuzzle(dayjs().format('YYYY-MM-DD')));
+        };
+
+        loadChallengeOrToday();
     }, [dispatch]);
 
     useEffect(() => {
@@ -75,7 +82,8 @@ const PuzzleContainer = () => {
         if (!currentPuzzle) return;
         const payload = encodeURIComponent(JSON.stringify({
             dateISO: currentPuzzle.dateISO,
-            type: currentPuzzle.type
+            type: currentPuzzle.type,
+            gameState: currentPuzzle.gameState
         }));
         const url = `${window.location.origin}${window.location.pathname}?challenge=${payload}`;
         try {

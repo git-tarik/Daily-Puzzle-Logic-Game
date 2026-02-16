@@ -9,6 +9,7 @@ import PuzzleContainer from './components/puzzles/PuzzleContainer';
 import { getUser, saveUser } from './lib/db';
 import { login } from './features/auth/authSlice';
 import { useDailyReset } from './hooks/useDailyReset';
+import { preGenerateYearPuzzles } from './features/puzzles/puzzleSlice';
 
 function App() {
     const dispatch = useDispatch();
@@ -47,6 +48,9 @@ function App() {
                 };
                 await saveUser(user);
             }
+
+            // Warm up 365 daily puzzles in local IndexedDB for offline-first play.
+            dispatch(preGenerateYearPuzzles());
         };
 
         initUser();

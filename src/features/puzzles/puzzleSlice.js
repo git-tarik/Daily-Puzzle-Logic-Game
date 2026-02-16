@@ -3,9 +3,55 @@ import { calculateScore } from '../../engine/scoring.js';
 import { checkAchievements } from '../../engine/achievements.js';
 import { generatePuzzle, validatePuzzle } from '../../engine/generatePuzzle';
 import { getPuzzle, savePuzzle, getUser, saveUser } from '../../lib/db';
+import { getApiUrl } from '../../lib/api';
 import dayjs from 'dayjs';
 import { getDailyPuzzleMeta } from '../../engine/dailyPlan';
 import { DAILY_HINT_LIMIT, getPuzzleHint } from '../../engine/hints';
+
+const buildDailyPuzzle = async (dateISO) => {
+    const { type, difficulty: baseDifficulty } = getDailyPuzzleMeta(dateISO);
+    const user = await getUser();
+    let adaptiveDelta = 0;
+    if ((user?.puzzlesSolved || 0) >= 3) {
+        if ((user?.avgSolveTime || 0) < 180) adaptiveDelta = 1;
+        if ((user?.avgSolveTime || 0) > 600) adaptiveDelta = -1;
+    }
+    const difficulty = Math.min(5, Math.max(1, baseDifficulty + adaptiveDelta));
+    const generated = generatePuzzle(dateISO, type, difficulty);
+
+    return {
+        dateISO,
+        ...generated,
+        difficulty,
+        progress: 0,
+        solved: false,
+        attempts: [],
+        hintsUsed: 0,
+        gameState: null
+    };
+};
+
+export const preGenerateYearPuzzles = createAsyncThunk(
+    'puzzle/preGenerateYear',
+    async (_, { rejectWithValue }) => {
+        try {
+            const tasks = [];
+            for (let offset = 0; offset < 365; offset += 1) {
+                const dateISO = dayjs().add(offset, 'day').format('YYYY-MM-DD');
+                tasks.push((async () => {
+                    const existing = await getPuzzle(dateISO);
+                    if (existing) return;
+                    const puzzle = await buildDailyPuzzle(dateISO);
+                    await savePuzzle(puzzle);
+                })());
+            }
+            await Promise.all(tasks);
+            return true;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
 
 // Thunks
 export const fetchDailyPuzzle = createAsyncThunk(
@@ -17,29 +63,18 @@ export const fetchDailyPuzzle = createAsyncThunk(
 
             if (!puzzle) {
                 // 2. Generate new if not found
-                const { type, difficulty: baseDifficulty } = getDailyPuzzleMeta(dateISO);
-                const user = await getUser();
-                let adaptiveDelta = 0;
-                if ((user?.puzzlesSolved || 0) >= 3) {
-                    if ((user?.avgSolveTime || 0) < 180) adaptiveDelta = 1;
-                    if ((user?.avgSolveTime || 0) > 600) adaptiveDelta = -1;
-                }
-                const difficulty = Math.min(5, Math.max(1, baseDifficulty + adaptiveDelta));
-
-                const generated = generatePuzzle(dateISO, type, difficulty);
-
-                puzzle = {
-                    dateISO,
-                    ...generated,
-                    difficulty,
-                    progress: 0,
-                    solved: false,
-                    attempts: [],
-                    hintsUsed: 0,
-                    gameState: null // For Matrix: current grid state; For Sequence: current inputs
-                };
-
+                puzzle = await buildDailyPuzzle(dateISO);
                 await savePuzzle(puzzle);
+            } else {
+                // If this was pre-generated and untouched, refresh adaptive difficulty for latest user skill.
+                const untouched = !puzzle.solved && (!puzzle.attempts?.length) && puzzle.gameState == null && (puzzle.hintsUsed || 0) === 0;
+                if (untouched) {
+                    const recalculated = await buildDailyPuzzle(dateISO);
+                    if ((puzzle.difficulty || 1) !== recalculated.difficulty) {
+                        puzzle = recalculated;
+                        await savePuzzle(puzzle);
+                    }
+                }
             }
 
             return puzzle;
@@ -58,9 +93,7 @@ export const submitPuzzleAttempt = createAsyncThunk(
         if (!currentPuzzle) throw new Error("No active puzzle");
 
         // Validate
-        console.log("DEBUG: submitPuzzleAttempt calling validatePuzzle with:", { type: currentPuzzle.type, attempt });
         const result = validatePuzzle(currentPuzzle.type, currentPuzzle, attempt);
-        console.log("DEBUG: validatePuzzle returned:", result);
 
         // Update Puzzle State
         const updatedPuzzle = {
@@ -133,6 +166,31 @@ export const submitPuzzleAttempt = createAsyncThunk(
                 updatedPuzzle.score = finalScore;
                 updatedPuzzle.timeTaken = timeTaken;
                 await savePuzzle(updatedPuzzle);
+
+                const authUser = state.auth?.user;
+                const isGuest = authUser?.id === 'guest';
+                if (authUser?.id && !isGuest) {
+                    try {
+                        await fetch(getApiUrl('/api/score'), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: authUser.id,
+                                dateISO: currentPuzzle.dateISO,
+                                puzzleType: currentPuzzle.type,
+                                score: finalScore,
+                                timeTaken,
+                                attempt,
+                                solutionProof: currentPuzzle.solutionHash,
+                                difficulty: currentPuzzle.difficulty || 1,
+                                hintsUsed: currentPuzzle.hintsUsed || 0,
+                                timedMode
+                            })
+                        });
+                    } catch (syncErr) {
+                        console.error('Score sync failed:', syncErr);
+                    }
+                }
 
                 // Return extra info for UI
                 return { result, updatedPuzzle, newAchievements, scoreBreakdown: breakdown, finalScore };

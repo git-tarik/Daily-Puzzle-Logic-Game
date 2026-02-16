@@ -59,7 +59,10 @@ app.post('/api/score', async (req, res) => {
             score: z.number().int().min(0),
             timeTaken: z.number().int().min(0),
             attempt: z.any(),
-            solutionProof: z.string()
+            solutionProof: z.string(),
+            difficulty: z.number().int().min(1).max(5).default(1),
+            hintsUsed: z.number().int().min(0).default(0),
+            timedMode: z.boolean().default(false)
         });
 
         const data = schema.parse(req.body);
@@ -110,10 +113,11 @@ app.post('/api/score', async (req, res) => {
 
         // Recalculate
         const { finalScore } = calculateScore({
-            difficulty: 1,
+            difficulty: data.difficulty,
             timeTakenSeconds: data.timeTaken,
-            hintsUsed: 0, // We assume 0 for leaderboard for now or need to pass it
-            streak: effectiveStreak
+            hintsUsed: data.hintsUsed,
+            streak: effectiveStreak,
+            timedMode: data.timedMode
         });
 
         // Tolerance? Or strict match? 
