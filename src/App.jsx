@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { getUser, saveUser } from './lib/db';
@@ -9,6 +9,7 @@ import { ensurePuzzleWindow } from './lib/puzzleWindowManager';
 import dayjs from 'dayjs';
 import { initializeBatchSync } from './lib/batchSync';
 import { logger } from './lib/logger.js';
+import { initializeDailyScoreSync } from './lib/dailyActivitySync';
 
 const Home = lazy(() => import('./pages/Home'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -17,6 +18,7 @@ const PuzzleContainer = lazy(() => import('./components/puzzles/PuzzleContainer'
 
 function App() {
     const dispatch = useDispatch();
+    const authUser = useSelector((state) => state.auth.user);
     const [view, setView] = useState(() => (
         new URLSearchParams(window.location.search).has('challenge') ? 'puzzle' : 'home'
     ));
@@ -60,6 +62,7 @@ function App() {
     }, [dispatch]);
 
     useEffect(() => initializeBatchSync(), []);
+    useEffect(() => initializeDailyScoreSync({ getUserId: () => authUser?.id }), [authUser?.id]);
 
     useEffect(() => {
         const onPopState = () => setPath(window.location.pathname.toLowerCase());

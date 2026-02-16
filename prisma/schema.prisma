@@ -21,6 +21,7 @@ model User {
   totalPoints  Int          @default(0)
   createdAt    DateTime     @default(now())
   dailyScores  DailyScore[]
+  dailyActivity DailyActivity[]
   userStats    UserStats?
 }
 
@@ -42,4 +43,20 @@ model UserStats {
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_stats")
+}
+
+model DailyActivity {
+  id         String   @id @default(cuid())
+  userId     String
+  date       DateTime
+  score      Int
+  timeTaken  Int
+  difficulty Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("daily_activity")
 }

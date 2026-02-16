@@ -1,25 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getUser } from '../../lib/db';
+import { DAILY_ACTIVITY_CHANGE_EVENT, getAllDailyActivity } from '../../lib/dailyActivityDb';
+import { buildActivityMap, calculateStreak } from '../../lib/heatmapUtils';
 import Heatmap from './Heatmap';
 import AchievementsList from './AchievementsList';
 import Leaderboard from './Leaderboard';
 
 const StatsDashboard = () => {
     const [user, setUser] = useState(null);
+    const [activities, setActivities] = useState([]);
 
     useEffect(() => {
-        // Poll for user updates (simple way to keep stats fresh without complex subscriptions yet)
-        // In real app, put user in Redux or Context
         const load = async () => {
-            const u = await getUser();
+            const [u, a] = await Promise.all([getUser(), getAllDailyActivity()]);
             setUser(u);
+            setActivities(a);
         };
         load();
 
-        // Listen for storage events or just poll
         const interval = setInterval(load, 2000);
-        return () => clearInterval(interval);
+        const onActivityChange = () => load();
+        window.addEventListener(DAILY_ACTIVITY_CHANGE_EVENT, onActivityChange);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener(DAILY_ACTIVITY_CHANGE_EVENT, onActivityChange);
+        };
     }, []);
+
+    const streakCount = useMemo(() => calculateStreak(buildActivityMap(activities)), [activities]);
+    const totalScore = useMemo(
+        () => activities.reduce((sum, entry) => sum + (entry.solved ? entry.score : 0), 0),
+        [activities]
+    );
 
     if (!user) return null;
 
@@ -30,7 +43,7 @@ const StatsDashboard = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
-                            {user.streakCount || 0}
+                            {streakCount}
                         </div>
                         <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                             Day Streak
@@ -38,7 +51,7 @@ const StatsDashboard = () => {
                     </div>
                     <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="text-3xl font-black text-purple-600 dark:text-purple-400">
-                            {user.totalScore || 0}
+                            {totalScore}
                         </div>
                         <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                             Total Score
@@ -47,7 +60,7 @@ const StatsDashboard = () => {
                 </div>
 
                 <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <Heatmap heatmap={user.heatmap} />
+                    <Heatmap />
                 </div>
             </div>
 

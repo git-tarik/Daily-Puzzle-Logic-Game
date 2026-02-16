@@ -7,6 +7,13 @@ import { DAILY_HINT_LIMIT, getPuzzleHint } from '../../engine/hints';
 import dayjs from 'dayjs';
 import { queueScoreForSync } from '../../lib/batchSync';
 import { loadPuzzleWithWindow } from '../../lib/puzzleWindowManager';
+import {
+    getAllDailyActivity,
+    upsertDailyActivity,
+    upsertMilestoneAchievement,
+} from '../../lib/dailyActivityDb';
+import { evaluateMilestones } from '../../lib/heatmapUtils';
+import { syncDailyScores } from '../../lib/dailyActivitySync';
 
 // Thunks
 export const fetchDailyPuzzle = createAsyncThunk(
@@ -103,6 +110,19 @@ export const submitPuzzleAttempt = createAsyncThunk(
                 updatedPuzzle.score = finalScore;
                 updatedPuzzle.timeTaken = timeTaken;
                 await savePuzzle(updatedPuzzle);
+                await upsertDailyActivity({
+                    date: currentPuzzle.dateISO,
+                    solved: true,
+                    score: finalScore,
+                    timeTaken,
+                    difficulty: currentPuzzle.difficulty || 1,
+                });
+
+                const activities = await getAllDailyActivity();
+                const milestones = evaluateMilestones(activities, today);
+                await Promise.all(
+                    milestones.map((milestone) => upsertMilestoneAchievement(milestone))
+                );
 
                 const authUser = state.auth?.user;
                 const isGuest = authUser?.id === 'guest';
@@ -118,6 +138,7 @@ export const submitPuzzleAttempt = createAsyncThunk(
                         hintsUsed: currentPuzzle.hintsUsed || 0,
                         timedMode
                     });
+                    await syncDailyScores({ userId: authUser.id }).catch(() => null);
                 }
 
                 // Return extra info for UI

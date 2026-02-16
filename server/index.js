@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { verifyScoreSubmission } from './verification.js';
 import { calculateScore } from '../src/engine/scoring.js';
 import authRouter from './auth.js';
+import crypto from 'crypto';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -99,6 +100,49 @@ const scoreSubmissionSchema = z
 const leaderboardQuerySchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
+
+const dailySyncEntrySchema = z
+    .object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        score: z.number().int().min(0).max(10000),
+        timeTaken: z.number().int().min(0).max(24 * 60 * 60),
+        difficulty: z.number().int().min(1).max(5).default(1),
+    })
+    .strict();
+
+const dailySyncSchema = z.object({
+    entries: z.array(dailySyncEntrySchema).min(1).max(365),
+});
+
+const getRequestUserId = (req) => {
+    const headerValue = req.headers['x-user-id'];
+    if (typeof headerValue !== 'string') return null;
+    const trimmed = headerValue.trim();
+    if (!trimmed || trimmed === 'guest') return null;
+    return trimmed.slice(0, 128);
+};
+
+const parseDateAtLocalMidnight = (dateISO) => {
+    const [year, month, day] = dateISO.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
+
+const isDateWithinSyncRange = (dateISO) => {
+    const date = parseDateAtLocalMidnight(dateISO);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const minDate = new Date(today);
+    minDate.setFullYear(minDate.getFullYear() - 5);
+
+    return date.getTime() <= today.getTime() && date.getTime() >= minDate.getTime();
+};
+
+const computeEntryIntegrityDigest = (userId, entry) => {
+    const secret = process.env.ACTIVITY_SYNC_HMAC_SECRET || process.env.SCORE_HMAC_SECRET || 'dev-only-secret';
+    const payload = `${userId}|${entry.date}|${entry.score}|${entry.timeTaken}|${entry.difficulty}`;
+    return crypto.createHmac('sha256', secret).update(payload).digest('hex');
+};
 
 const processScoreSubmission = async (submission) => {
     let user = await prisma.user.findUnique({ where: { id: submission.userId } });
@@ -239,6 +283,65 @@ app.post(
         }
     }
 );
+
+app.post('/api/sync/daily-scores', scoreLimiter, validateBody(dailySyncSchema), async (req, res) => {
+    try {
+        const userId = getRequestUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'Missing authenticated user context' });
+        }
+
+        let user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            user = await prisma.user.create({ data: { id: userId } });
+        }
+
+        const accepted = [];
+        for (const entry of req.validatedBody.entries) {
+            if (!isDateWithinSyncRange(entry.date)) {
+                continue;
+            }
+
+            const integrityDigest = computeEntryIntegrityDigest(userId, entry);
+            await prisma.dailyActivity.upsert({
+                where: {
+                    userId_date: {
+                        userId,
+                        date: parseDateAtLocalMidnight(entry.date),
+                    },
+                },
+                create: {
+                    userId,
+                    date: parseDateAtLocalMidnight(entry.date),
+                    score: entry.score,
+                    timeTaken: entry.timeTaken,
+                    difficulty: entry.difficulty,
+                },
+                update: {
+                    score: entry.score,
+                    timeTaken: entry.timeTaken,
+                    difficulty: entry.difficulty,
+                },
+            });
+
+            accepted.push({
+                date: entry.date,
+                digest: integrityDigest,
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            acceptedCount: accepted.length,
+            accepted,
+        });
+    } catch (error) {
+        if (!isProd) {
+            console.error(error);
+        }
+        return res.status(500).json({ error: 'Daily activity sync failed' });
+    }
+});
 
 app.get('/api/leaderboard', validateQuery(leaderboardQuerySchema), async (req, res) => {
     try {
