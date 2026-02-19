@@ -2,10 +2,10 @@ import dayjs from 'dayjs';
 
 export const intensityMap = {
     0: 'bg-gray-200',
-    1: 'bg-green-200',
-    2: 'bg-green-400',
-    3: 'bg-green-600',
-    4: 'bg-green-800',
+    1: 'bg-blue-300',
+    2: 'bg-blue-500',
+    3: 'bg-indigo-500',
+    4: 'bg-indigo-800',
 };
 
 const parseDateISOToLocalDate = (dateISO) => {
@@ -143,4 +143,3 @@ export const evaluateMilestones = (activities, todayISO = dayjs().format('YYYY-M
 
     return milestones;
 };
-

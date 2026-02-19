@@ -41,16 +41,16 @@ const StatsDashboard = () => {
             {/* Left Col: Core Stats & Heatmap */}
             <div className="space-y-8">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
-                        <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
+                    <div className="p-6 bg-white rounded-2xl border border-gray-200 text-center">
+                        <div className="text-3xl font-black text-indigo-600">
                             {streakCount}
                         </div>
                         <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                             Day Streak
                         </div>
                     </div>
-                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
-                        <div className="text-3xl font-black text-purple-600 dark:text-purple-400">
+                    <div className="p-6 bg-white rounded-2xl border border-gray-200 text-center">
+                        <div className="text-3xl font-black text-indigo-700">
                             {totalScore}
                         </div>
                         <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
@@ -59,13 +59,13 @@ const StatsDashboard = () => {
                     </div>
                 </div>
 
-                <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="p-6 bg-white rounded-2xl border border-gray-200">
                     <Heatmap />
                 </div>
             </div>
 
             {/* Right Col: Achievements */}
-            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="p-6 bg-white rounded-2xl border border-gray-200">
                 <AchievementsList unlockedIds={user.unlockedAchievements} />
                 <Leaderboard />
             </div>

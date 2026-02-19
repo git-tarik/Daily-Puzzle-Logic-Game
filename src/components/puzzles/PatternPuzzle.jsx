@@ -35,12 +35,12 @@ const PatternPuzzle = ({ puzzle, onSubmit, onProgress }) => {
 
     return (
         <div className="flex flex-col items-center">
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">Complete the repeating pattern</p>
-            <p className="text-xs text-gray-500 mb-6">Available symbols: {bank.join(', ')}</p>
+            <p className="text-lg text-gray-600 mb-4 brand-secondary-font">Complete the repeating pattern</p>
+            <p className="text-xs text-gray-500 mb-6 brand-secondary-font">Available symbols: {bank.join(', ')}</p>
             <div className="flex flex-wrap justify-center gap-3 mb-8">
                 {sequence.map((val, idx) => (
                     val !== null ? (
-                        <div key={idx} className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold">
+                        <div key={idx} className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold">
                             {val}
                         </div>
                     ) : (
@@ -59,7 +59,7 @@ const PatternPuzzle = ({ puzzle, onSubmit, onProgress }) => {
             <button
                 onClick={handleVerify}
                 disabled={!isComplete || puzzle.solved}
-                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full"
+                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full transition-colors"
             >
                 {puzzle.solved ? 'Solved' : 'Check Solution'}
             </button>

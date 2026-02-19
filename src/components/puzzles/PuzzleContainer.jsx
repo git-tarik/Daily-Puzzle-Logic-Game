@@ -96,7 +96,7 @@ const PuzzleContainer = () => {
         }
     };
 
-    if (loading && !currentPuzzle) return <div className="text-center py-20 text-xl font-bold animate-pulse">Loading Puzzle...</div>;
+    if (loading && !currentPuzzle) return <div className="text-center py-20 text-xl font-bold">Loading Puzzle...</div>;
     if (error && !currentPuzzle) return <div className="text-center py-20 text-red-500">Error: {error}</div>;
     if (!currentPuzzle) return null;
 
@@ -125,29 +125,29 @@ const PuzzleContainer = () => {
 
     return (
         <div className="flex flex-col items-center w-full">
-            <div className="w-full max-w-2xl p-4 md:p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl relative overflow-hidden">
+            <div className="w-full max-w-2xl p-4 md:p-8 bg-white rounded-2xl border border-gray-200 relative overflow-hidden">
                 {error && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded" role="alert">
                         <span className="block sm:inline">{error}</span>
                     </div>
                 )}
 
-                <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-4">
                     <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                        <h2 className="text-2xl font-bold text-indigo-600">
                             Daily Puzzle
                         </h2>
                         <span className="text-xs text-gray-500 font-mono tracking-wider ml-1 uppercase">
                             {currentPuzzle.type} | {currentPuzzle.dateISO} | D{currentPuzzle.difficulty || 1}
                         </span>
                     </div>
-                    <div className="text-xl font-mono tabular-nums font-bold text-gray-700 dark:text-gray-300">
+                    <div className="text-xl font-mono tabular-nums font-bold text-gray-700">
                         {currentPuzzle.solved ? <span className="text-green-500">SOLVED</span> : formatTime(seconds)}
                     </div>
                 </div>
 
                 <div className="mb-6 flex items-center justify-between gap-2">
-                    <label className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                    <label className="text-sm text-gray-600 flex items-center gap-2 brand-secondary-font">
                         <input
                             type="checkbox"
                             checked={timedMode}
@@ -158,7 +158,7 @@ const PuzzleContainer = () => {
                     </label>
                     <button
                         onClick={handleShareChallenge}
-                        className="text-xs px-3 py-1 border rounded border-gray-300 dark:border-gray-600"
+                        className="text-xs px-3 py-1 border rounded border-gray-300"
                     >
                         {copied ? 'Copied!' : 'Copy Challenge Link'}
                     </button>
@@ -171,9 +171,9 @@ const PuzzleContainer = () => {
                 </div>
 
                 {validationResult && !validationResult.ok && !currentPuzzle.solved && (
-                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                        <h3 className="text-red-600 dark:text-red-400 font-bold mb-1">Incorrect</h3>
-                        <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400">
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 className="text-red-600 font-bold mb-1">Incorrect</h3>
+                        <ul className="list-disc list-inside text-sm text-red-600">
                             {validationResult.reasons?.map((reason, idx) => <li key={idx}>{reason}</li>)}
                         </ul>
                     </div>
@@ -186,21 +186,21 @@ const PuzzleContainer = () => {
                 )}
 
                 {currentPuzzle.solved && (
-                    <div className="mb-6 p-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-center">
-                        <h3 className="text-2xl text-green-600 dark:text-green-400 font-bold mb-2">Puzzle Solved</h3>
+                    <div className="mb-6 p-6 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <h3 className="text-2xl text-green-600 font-bold mb-2">Puzzle Solved</h3>
                         <div className="flex justify-center gap-8 my-4">
                             <div>
                                 <div className="text-xs text-gray-500 uppercase">Score</div>
-                                <div className="text-xl font-bold text-gray-800 dark:text-white">{currentPuzzle.score}</div>
+                                <div className="text-xl font-bold text-gray-800">{currentPuzzle.score}</div>
                             </div>
                             <div>
                                 <div className="text-xs text-gray-500 uppercase">Time</div>
-                                <div className="text-xl font-bold text-gray-800 dark:text-white">{formatTime(currentPuzzle.timeTaken || 0)}</div>
+                                <div className="text-xl font-bold text-gray-800">{formatTime(currentPuzzle.timeTaken || 0)}</div>
                             </div>
                         </div>
                         <button
                             onClick={() => setShowStats(!showStats)}
-                            className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-semibold underline"
+                            className="text-indigo-600 hover:text-indigo-800 text-sm font-semibold underline"
                         >
                             {showStats ? 'Hide Stats' : 'View Stats and Heatmap'}
                         </button>
@@ -221,7 +221,7 @@ const PuzzleContainer = () => {
             </div>
 
             {(showStats || currentPuzzle.solved) && (
-                <div className="w-full flex justify-center animate-fade-in-up">
+                <div className="w-full flex justify-center">
                     <Suspense fallback={<div className="text-sm text-gray-500">Loading stats...</div>}>
                         <StatsDashboard />
                     </Suspense>

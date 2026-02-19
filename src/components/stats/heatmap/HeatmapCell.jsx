@@ -1,48 +1,28 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { intensityMap } from '../../../lib/heatmapUtils';
-
-const MotionDiv = motion.div;
 
 const HeatmapCell = ({
     cell,
     activity,
-    isMilestonePulse,
     onHover,
     onLeave,
 }) => {
     if (!cell) {
-        return <div className="w-3 h-3 md:w-4 md:h-4 rounded-sm bg-transparent" aria-hidden="true" />;
+        return <div className="w-3 h-3 md:w-4 md:h-4 rounded-sm bg-white" aria-hidden="true" />;
     }
 
     const intensity = activity?.intensity ?? 0;
-    const shouldAnimateToday = cell.isToday && intensity > 0;
     const colorClass = intensityMap[intensity] ?? intensityMap[0];
 
     return (
         <div className="relative">
-            <MotionDiv
+            <div
                 title={cell.dateISO}
                 onMouseEnter={(event) => onHover(cell.dateISO, event.currentTarget)}
                 onMouseLeave={onLeave}
-                className={`w-3 h-3 md:w-4 md:h-4 rounded-sm border border-black/5 ${colorClass} ${
+                className={`w-3 h-3 md:w-4 md:h-4 rounded-sm border border-gray-200 ${colorClass} ${
                     cell.isToday ? 'outline outline-1 outline-indigo-500 outline-offset-1' : ''
                 }`}
-                initial={false}
-                animate={
-                    shouldAnimateToday
-                        ? {
-                            scale: [1, 1.08, 1],
-                        }
-                        : isMilestonePulse
-                            ? { scale: [1, 1.16, 1] }
-                            : { scale: 1 }
-                }
-                transition={{
-                    duration: shouldAnimateToday ? 0.6 : 0.9,
-                    ease: 'easeInOut',
-                    repeat: shouldAnimateToday || isMilestonePulse ? 1 : 0,
-                }}
             />
         </div>
     );
@@ -55,7 +35,6 @@ const areEqual = (prev, next) => {
     if (prev.activity?.score !== next.activity?.score) return false;
     if (prev.activity?.timeTaken !== next.activity?.timeTaken) return false;
     if (prev.activity?.difficulty !== next.activity?.difficulty) return false;
-    if (prev.isMilestonePulse !== next.isMilestonePulse) return false;
     return true;
 };
 

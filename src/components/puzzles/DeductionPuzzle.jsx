@@ -29,7 +29,7 @@ const DeductionPuzzle = ({ puzzle, onSubmit, onProgress }) => {
         <div className="flex flex-col gap-6">
             <div>
                 <h3 className="font-bold mb-2">Clues</h3>
-                <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                <ul className="text-sm text-gray-600 space-y-1 brand-secondary-font">
                     {clues.map((clue, idx) => <li key={idx}>{clue}</li>)}
                 </ul>
             </div>
@@ -42,7 +42,7 @@ const DeductionPuzzle = ({ puzzle, onSubmit, onProgress }) => {
                             value={assignments[idx]}
                             disabled={puzzle.solved}
                             onChange={(e) => handleChange(idx, e.target.value)}
-                            className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                            className="px-3 py-2 rounded-md border border-gray-300 bg-white"
                         >
                             <option value="">Select pet</option>
                             {pets.map((pet) => <option key={pet} value={pet}>{pet}</option>)}
@@ -54,7 +54,7 @@ const DeductionPuzzle = ({ puzzle, onSubmit, onProgress }) => {
             <button
                 onClick={() => onSubmit(assignments)}
                 disabled={!isComplete || puzzle.solved}
-                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full self-center"
+                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full self-center transition-colors"
             >
                 {puzzle.solved ? 'Solved' : 'Check Solution'}
             </button>

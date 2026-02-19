@@ -13,10 +13,7 @@ const BrandText = styled.div`
     font-size: 1.25rem;
     font-weight: 800;
     letter-spacing: 0.01em;
-    background: linear-gradient(90deg, var(--bluestock-primary-blue) 0%, var(--bluestock-secondary-purple) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--bluestock-primary-blue);
 `;
 
 const Header = () => {
@@ -211,12 +208,12 @@ const Header = () => {
 
     const Modal = () => createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-800"
             role="dialog"
             aria-modal="true"
         >
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-[400px] max-w-[90%] p-6">
-                <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Sign In</h2>
+            <div className="bg-white rounded-xl border border-gray-300 w-[400px] max-w-[90%] p-6">
+                <h2 className="text-xl font-bold mb-4 text-gray-900">Sign In</h2>
 
                 <div className="flex flex-col gap-3">
                     {AUTH_MODE === 'stub' ? (
@@ -238,7 +235,7 @@ const Header = () => {
                         <>
                             <div id="googleBtn" className="w-full flex justify-center min-h-[40px]"></div>
                             <button
-                                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded transition-colors font-medium"
+                                className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded transition-colors font-medium"
                                 onClick={() => handleLogin('truecaller')}
                                 disabled={isTruecallerLoading || !TRUECALLER_APP_KEY}
                             >
@@ -250,7 +247,7 @@ const Header = () => {
 
                 <button
                     onClick={closeAuthModal}
-                    className="mt-6 w-full py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                    className="mt-6 w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                 >
                     Cancel
                 </button>
@@ -260,17 +257,20 @@ const Header = () => {
     );
 
     return (
-        <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
+        <header className="border-b border-gray-200 bg-white sticky top-0 z-40">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <BrandText>Logic Looper</BrandText>
+                <BrandText>
+                    <i className="bi bi-grid-3x3-gap-fill mr-2" aria-hidden="true"></i>
+                    Logic Looper
+                </BrandText>
 
                 <div className="flex items-center gap-4">
                     {isAuthenticated ? (
                         <div className="flex items-center gap-4">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Hello, {user?.name || user?.email || 'User'}</span>
+                            <span className="text-sm font-medium text-gray-700">Hello, {user?.name || user?.email || 'User'}</span>
                             <button
                                 onClick={handleLogout}
-                                className="text-sm px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-200"
+                                className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-100 transition-colors text-gray-700"
                             >
                                 Logout
                             </button>
@@ -279,13 +279,13 @@ const Header = () => {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleGuestLogin}
-                                className="text-sm px-3 py-1.5 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
+                                className="text-sm px-3 py-1.5 text-gray-600 hover:text-indigo-600 font-medium transition-colors"
                             >
                                 Continue as Guest
                             </button>
                             <button
                                 onClick={openAuthModal}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
                             >
                                 Sign In
                             </button>

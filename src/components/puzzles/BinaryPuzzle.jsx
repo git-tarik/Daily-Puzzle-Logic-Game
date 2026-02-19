@@ -26,8 +26,8 @@ const BinaryPuzzle = ({ puzzle, onSubmit, onProgress }) => {
 
     return (
         <div className="flex flex-col items-center gap-6">
-            <h3 className="text-lg font-bold">Gate: {puzzle.payload?.gate}</h3>
-            <table className="border-collapse border border-gray-300 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-indigo-600">Gate: {puzzle.payload?.gate}</h3>
+            <table className="border-collapse border border-gray-300 bg-white">
                 <thead>
                     <tr>
                         <th className="border px-4 py-2">A</th>
@@ -50,7 +50,7 @@ const BinaryPuzzle = ({ puzzle, onSubmit, onProgress }) => {
                                             value={answers[missingIdx]}
                                             disabled={puzzle.solved}
                                             onChange={(e) => setAnswer(missingIdx, Number(e.target.value))}
-                                            className="px-2 py-1 border rounded"
+                                            className="px-2 py-1 border border-gray-300 rounded bg-white"
                                         >
                                             <option value="">?</option>
                                             <option value={0}>0</option>
@@ -66,7 +66,7 @@ const BinaryPuzzle = ({ puzzle, onSubmit, onProgress }) => {
             <button
                 onClick={() => onSubmit(answers.map((v) => Number(v)))}
                 disabled={!isComplete || puzzle.solved}
-                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full"
+                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-full transition-colors"
             >
                 {puzzle.solved ? 'Solved' : 'Check Solution'}
             </button>

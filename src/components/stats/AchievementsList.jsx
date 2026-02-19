@@ -14,17 +14,17 @@ const AchievementsList = ({ unlockedIds = [] }) => {
                     return (
                         <div key={ach.id} className={`flex items-center gap-3 p-3 rounded-lg border 
                              ${isUnlocked
-                                ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/10 dark:to-orange-900/10 border-yellow-200 dark:border-yellow-800'
-                                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-60 grayscale'
+                                ? 'bg-blue-100 border-blue-300'
+                                : 'bg-gray-50 border-gray-200'
                             }`}>
                             <div className="text-2xl">
                                 <i className={`${ach.icon} brand-icon`} aria-hidden="true"></i>
                             </div>
                             <div>
-                                <div className={`text-sm font-bold ${isUnlocked ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+                                <div className={`text-sm font-bold ${isUnlocked ? 'text-gray-900' : 'text-gray-500'}`}>
                                     {ach.name}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                                <div className="text-xs text-gray-500 leading-tight brand-secondary-font">
                                     {ach.description}
                                 </div>
                             </div>

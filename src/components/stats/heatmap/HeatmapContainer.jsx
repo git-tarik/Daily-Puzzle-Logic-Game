@@ -19,10 +19,10 @@ import {
 } from '../../../lib/heatmapUtils';
 
 const badgeMeta = {
-    STREAK_7_DAYS: { label: '7-Day Streak', style: 'bg-amber-100 text-amber-800 border-amber-200' },
-    STREAK_30_DAYS: { label: '30-Day Streak', style: 'bg-orange-100 text-orange-800 border-orange-200' },
-    COMPLETED_100_DAYS: { label: '100 Days Completed', style: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
-    PERFECT_MONTH: { label: 'Perfect Month', style: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+    STREAK_7_DAYS: { label: '7-Day Streak', style: 'bg-blue-100 text-blue-800 border-blue-300' },
+    STREAK_30_DAYS: { label: '30-Day Streak', style: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+    COMPLETED_100_DAYS: { label: '100 Days Completed', style: 'bg-purple-100 text-purple-800 border-purple-300' },
+    PERFECT_MONTH: { label: 'Perfect Month', style: 'bg-red-100 text-red-700 border-red-300' },
 };
 
 const HeatmapContainer = () => {
@@ -139,7 +139,7 @@ const HeatmapContainer = () => {
                 <select
                     value={selectedYear}
                     onChange={(event) => setSelectedYear(Number(event.target.value))}
-                    className="text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-900"
+                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
                 >
                     {years.map((year) => (
                         <option key={year} value={year}>

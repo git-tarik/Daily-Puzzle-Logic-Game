@@ -71,10 +71,10 @@ function App() {
     }, []);
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-200">
+        <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
             <Header />
             <main className="flex-grow container mx-auto px-4 py-8">
-                <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500">Loading...</div>}>
+                <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500 brand-secondary-font">Loading...</div>}>
                     {path === '/privacy' && <PrivacyPolicy />}
                     {path === '/terms' && <TermsOfService />}
                     {path !== '/privacy' && path !== '/terms' && (
@@ -86,6 +86,7 @@ function App() {
                                         onClick={() => setView('home')}
                                         className="mb-4 text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1"
                                     >
+                                        <i className="bi bi-arrow-left-short text-base" aria-hidden="true"></i>
                                         Back to Home
                                     </button>
                                     <PuzzleContainer />

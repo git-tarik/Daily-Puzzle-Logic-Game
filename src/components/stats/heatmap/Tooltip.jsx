@@ -17,7 +17,7 @@ const Tooltip = ({ activity, style, placement = 'top' }) => {
 
     return (
         <div
-            className={`pointer-events-none absolute z-30 rounded-md bg-gray-900 text-white text-xs px-3 py-2 shadow-xl whitespace-nowrap ${placementClass}`}
+            className={`pointer-events-none absolute z-30 rounded-md bg-gray-900 text-white text-xs px-3 py-2 border border-gray-700 whitespace-nowrap ${placementClass}`}
             style={style}
             role="tooltip"
         >

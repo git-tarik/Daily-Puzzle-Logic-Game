@@ -27,9 +27,9 @@ const Leaderboard = () => {
         load();
     }, []);
 
-    if (status === 'loading') return <div className="text-sm text-gray-400">Loading leaderboard...</div>;
-    if (status === 'error') return <div className="text-sm text-gray-400">Leaderboard unavailable.</div>;
-    if (!rows.length) return <div className="text-sm text-gray-400">No scores yet today.</div>;
+    if (status === 'loading') return <div className="text-sm text-gray-400 brand-secondary-font">Loading leaderboard...</div>;
+    if (status === 'error') return <div className="text-sm text-gray-400 brand-secondary-font">Leaderboard unavailable.</div>;
+    if (!rows.length) return <div className="text-sm text-gray-400 brand-secondary-font">No scores yet today.</div>;
 
     return (
         <div className="mt-6">
@@ -38,7 +38,7 @@ const Leaderboard = () => {
                 {rows.map((row) => (
                     <div key={`${row.rank}-${row.name}`} className="flex items-center justify-between text-sm">
                         <span className="font-mono text-gray-500 w-10">#{row.rank}</span>
-                        <span className="flex-1">{row.name}</span>
+                        <span className="flex-1 brand-secondary-font">{row.name}</span>
                         <span className="font-semibold">{row.score}</span>
                     </div>
                 ))}

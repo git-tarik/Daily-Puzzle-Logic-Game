@@ -138,22 +138,12 @@ th {
 .bg-white.rounded-xl,
 .bg-white.rounded-2xl,
 .bg-white.rounded-lg {
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--bluestock-primary-dark) 10%, transparent);
+  box-shadow: none;
+  border: 1px solid var(--bluestock-muted-blue);
 }
 
 .brand-icon {
   color: var(--bluestock-primary-blue);
   font-size: 1.25rem;
   line-height: 1;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
