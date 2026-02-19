@@ -1,5 +1,8 @@
 # Daily Puzzle Logic Game
 
+## Live Deployment
+https://daily-puzzle-logic-game.vercel.app/
+
 ## Working Principle
 This application provides a daily logic-training workflow where users solve one generated puzzle per day and track progress over time.
 Puzzle type and base difficulty are selected from the calendar date, then generated deterministically using a seeded PRNG so the same date maps to the same puzzle seed.
