@@ -50,6 +50,14 @@ When a puzzle is solved, the app applies scoring (base points, time bonus, hint 
 ## What Has Been Completed
 The repository contains a fully functional frontend gameplay flow with daily puzzle generation, attempt validation, scoring, and user progress persistence. Core game mechanics are implemented across five puzzle types, supported by local stats, achievements, and activity visualization. API-ready backend modules for authentication, score submission, leaderboard retrieval, and activity sync are implemented with Prisma-backed data models. The project includes production-oriented deployment configuration for Vercel and is in a demo-ready state for capstone presentation.
 
+## Challenges Faced
+- Designing five different puzzle types while keeping generation deterministic by date and ensuring validators stayed aligned with generator output.
+- Balancing local-first gameplay (offline persistence, caching, sync queues) with reliable server synchronization when connectivity returns.
+- Handling consistency across multiple storage layers (Dexie IndexedDB, idb activity store, and Prisma-backed backend records).
+- Implementing secure and practical score submission flow with validation, verification, and rate limiting.
+- Managing multi-provider authentication paths (guest, Google, Truecaller, credentials) without breaking the core puzzle flow.
+- Maintaining responsive, user-friendly puzzle interaction patterns across varied input styles (numeric grids, pattern symbols, logic mapping, truth tables).
+
 ## Future Scope
 - Add a complete authenticated session layer (token/cookie lifecycle, refresh handling, route protection).
 - Extend backend integration to support full profile synchronization across devices.
