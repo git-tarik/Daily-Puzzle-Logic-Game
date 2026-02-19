@@ -346,9 +346,15 @@ app.post('/api/sync/daily-scores', scoreLimiter, validateBody(dailySyncSchema), 
 app.get('/api/leaderboard', validateQuery(leaderboardQuerySchema), async (req, res) => {
     try {
         const { date } = req.validatedQuery;
+        const start = new Date(`${date}T00:00:00.000Z`);
+        const end = new Date(start);
+        end.setUTCDate(end.getUTCDate() + 1);
         const scores = await prisma.dailyScore.findMany({
             where: {
-                date: new Date(date),
+                date: {
+                    gte: start,
+                    lt: end,
+                },
             },
             take: 100,
             orderBy: {
