@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import HeatmapGrid from './HeatmapGrid';
+import Tooltip from './Tooltip';
 import {
     DAILY_ACTIVITY_CHANGE_EVENT,
     getActivityYears,
@@ -31,6 +32,8 @@ const HeatmapContainer = () => {
     const [allActivities, setAllActivities] = useState([]);
     const [achievements, setAchievements] = useState([]);
     const [hoveredDate, setHoveredDate] = useState(null);
+    const [tooltipPlacement, setTooltipPlacement] = useState(null);
+    const containerRef = useRef(null);
 
     const loadData = useCallback(async (year) => {
         const [yearData, allData, allYears, milestoneData] = await Promise.all([
@@ -52,7 +55,11 @@ const HeatmapContainer = () => {
     }, []);
 
     useEffect(() => {
-        loadData(selectedYear);
+        const timerId = setTimeout(() => {
+            loadData(selectedYear);
+        }, 0);
+
+        return () => clearTimeout(timerId);
     }, [loadData, selectedYear]);
 
     useEffect(() => {
@@ -86,11 +93,47 @@ const HeatmapContainer = () => {
 
     const totalCompleted = useMemo(() => allActivities.filter((entry) => entry.solved).length, [allActivities]);
 
-    const onHover = useCallback((dateISO) => setHoveredDate(dateISO), []);
-    const onLeave = useCallback(() => setHoveredDate(null), []);
+    const hoveredActivity = useMemo(
+        () => (hoveredDate ? activityMap.get(hoveredDate) : null),
+        [activityMap, hoveredDate]
+    );
+
+    const onHover = useCallback((dateISO, element) => {
+        setHoveredDate(dateISO);
+        if (!element || !containerRef.current) {
+            setTooltipPlacement(null);
+            return;
+        }
+
+        const cellRect = element.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const gap = 8;
+        const estimatedTooltipHeight = 72;
+        const left = cellRect.left - containerRect.left + cellRect.width / 2;
+        const topIfAbove = cellRect.top - containerRect.top - gap;
+
+        if (topIfAbove > estimatedTooltipHeight) {
+            setTooltipPlacement({
+                placement: 'top',
+                style: { left: `${left}px`, top: `${topIfAbove}px` },
+            });
+            return;
+        }
+
+        const topIfBelow = cellRect.bottom - containerRect.top + gap;
+        setTooltipPlacement({
+            placement: 'bottom',
+            style: { left: `${left}px`, top: `${topIfBelow}px` },
+        });
+    }, []);
+
+    const onLeave = useCallback(() => {
+        setHoveredDate(null);
+        setTooltipPlacement(null);
+    }, []);
 
     return (
-        <div className="space-y-4">
+        <div ref={containerRef} className="relative space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Contribution Heatmap</h3>
                 <select
@@ -109,11 +152,18 @@ const HeatmapContainer = () => {
             <HeatmapGrid
                 columns={grid.columns}
                 activityMap={activityMap}
-                hoveredDate={hoveredDate}
                 onHover={onHover}
                 onLeave={onLeave}
                 shouldPulseMilestone={shouldPulseMilestone}
             />
+
+            {hoveredActivity && tooltipPlacement && (
+                <Tooltip
+                    activity={hoveredActivity}
+                    placement={tooltipPlacement.placement}
+                    style={tooltipPlacement.style}
+                />
+            )}
 
             <div className="text-xs text-gray-500 flex flex-wrap gap-4">
                 <span>Current streak: {streak} days</span>
@@ -140,4 +190,3 @@ const HeatmapContainer = () => {
 };
 
 export default HeatmapContainer;
-

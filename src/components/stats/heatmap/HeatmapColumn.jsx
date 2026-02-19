@@ -5,7 +5,6 @@ const HeatmapColumn = ({
     column,
     activityMap,
     isMilestonePulse,
-    hoveredDate,
     onHover,
     onLeave,
 }) => (
@@ -20,7 +19,6 @@ const HeatmapColumn = ({
                     isMilestonePulse={isMilestonePulse}
                     onHover={onHover}
                     onLeave={onLeave}
-                    isHovered={hoveredDate === cell?.dateISO}
                 />
             );
         })}
@@ -28,4 +26,3 @@ const HeatmapColumn = ({
 );
 
 export default React.memo(HeatmapColumn);
-

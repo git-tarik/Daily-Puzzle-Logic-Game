@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { intensityMap } from '../../../lib/heatmapUtils';
-import Tooltip from './Tooltip';
+
+const MotionDiv = motion.div;
 
 const HeatmapCell = ({
     cell,
@@ -9,7 +10,6 @@ const HeatmapCell = ({
     isMilestonePulse,
     onHover,
     onLeave,
-    isHovered,
 }) => {
     if (!cell) {
         return <div className="w-3 h-3 md:w-4 md:h-4 rounded-sm bg-transparent" aria-hidden="true" />;
@@ -21,10 +21,9 @@ const HeatmapCell = ({
 
     return (
         <div className="relative">
-            {isHovered && <Tooltip activity={activity} />}
-            <motion.div
+            <MotionDiv
                 title={cell.dateISO}
-                onMouseEnter={() => onHover(cell.dateISO)}
+                onMouseEnter={(event) => onHover(cell.dateISO, event.currentTarget)}
                 onMouseLeave={onLeave}
                 className={`w-3 h-3 md:w-4 md:h-4 rounded-sm border border-black/5 ${colorClass} ${
                     cell.isToday ? 'outline outline-1 outline-indigo-500 outline-offset-1' : ''
@@ -57,9 +56,7 @@ const areEqual = (prev, next) => {
     if (prev.activity?.timeTaken !== next.activity?.timeTaken) return false;
     if (prev.activity?.difficulty !== next.activity?.difficulty) return false;
     if (prev.isMilestonePulse !== next.isMilestonePulse) return false;
-    if (prev.isHovered !== next.isHovered) return false;
     return true;
 };
 
 export default React.memo(HeatmapCell, areEqual);
-
